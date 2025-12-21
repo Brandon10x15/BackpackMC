@@ -1,16 +1,5 @@
-# BackpackMC
-
-A modern backpack plugin for Paper/Spigot servers (api-version 1.21). Players get a personal backpack with:
-- Permissions-based sizes (1–6 rows)
-- Auto-pickup into backpacks
-- Auto-sort modes (OFF, LIGHT, AGGRESSIVE)
-- Configurable item blacklist
-- Shortcut item (Bundle) with live preview
-- Multiple storage backends (YAML, SQLite, MySQL)
-- Migration tools and update checker
-- Clean, sort, open others’ backpacks with permissions
-
-Links:
+##Links:
+- Readme: [README.md](./README.md)
 - Installation: [Installation.md](./Installation.md)
 - Configuration: [Configuration.md](./Configuration.md)
 - Commands: [Commands.md](./Commands.md)
@@ -22,6 +11,18 @@ Links:
 - API (developers): [API.md](./API.md)
 - Events (developers): [Events.md](./Events.md)
 - FAQ: [FAQ.md](./FAQ.md)
+
+# BackpackMC
+
+A modern backpack plugin for Paper/Spigot servers (api-version 1.21). Players get a personal backpack with:
+- Permissions-based sizes (1–6 rows)
+- Auto-pickup into backpacks
+- Auto-sort modes (OFF, LIGHT, AGGRESSIVE)
+- Configurable item blacklist
+- Shortcut item (Bundle) with live preview
+- Multiple storage backends (YAML, SQLite, MySQL)
+- Migration tools and update checker
+- Clean, sort, open others’ backpacks with permissions
 
 ## Requirements
 - Server: Paper or Spigot 1.21+

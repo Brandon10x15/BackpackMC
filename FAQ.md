@@ -1,3 +1,17 @@
+##Links:
+- Readme: [README.md](./README.md)
+- Installation: [Installation.md](./Installation.md)
+- Configuration: [Configuration.md](./Configuration.md)
+- Commands: [Commands.md](./Commands.md)
+- Permissions: [Permissions.md](./Permissions.md)
+- Storage Backends: [Storage.md](./Storage.md)
+- Shortcut Item: [Shortcut-Item.md](./Shortcut-Item.md)
+- Migration Guide: [Migration.md](./Migration.md)
+- Troubleshooting: [Troubleshooting.md](./Troubleshooting.md)
+- API (developers): [API.md](./API.md)
+- Events (developers): [Events.md](./Events.md)
+- FAQ: [FAQ.md](./FAQ.md)
+
 # FAQ
 
 ## How do players get bigger backpacks?
