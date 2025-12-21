@@ -1,0 +1,50 @@
+# src/main/resources/config.yml
+language: en_US
+
+storage:
+  type: YAML # YAML | SQLITE | MYSQL
+  mysql:
+    host: localhost
+    port: 3306
+    database: backpackmc
+    user: root
+    password: password
+    useSSL: false
+  sqlite:
+    file: data.db
+  yaml:
+    folder: data
+
+settings:
+  command-cooldown-seconds: 3
+  worlds-blacklist:
+    - world_nether
+    - world_the_end
+  restrict-gamemodes: # Disallow opening in these, unless backpack.ignoreGameMode
+    - SPECTATOR
+  auto-pickup-enabled: true
+  item-filter:
+    # Materials that cannot be stored in backpacks
+    blocked:
+      - BEDROCK
+      - COMMAND_BLOCK
+  keep-on-death-default: true # If false, backpacks are cleared unless player has backpack.keepOnDeath
+  drop-on-death-if-not-keeping: false
+  # Default auto-sort mode for players: OFF, LIGHT, AGGRESSIVE
+  auto-sort:
+    default-mode: LIGHT
+  updater:
+    enabled: false
+    check-url: https://raw.githubusercontent.com/example/BackpackMC/main/version.txt
+    download-url: https://github.com/example/BackpackMC/releases/latest/download/BackpackMC.jar
+
+shortcut-item:
+  enabled: true
+  give-on-join: true
+  force-slot: -1 # -1 to not force, 0-8 for hotbar slot
+  material: BUNDLE
+  name: "&6Backpack"
+  lore:
+    - "&7Right-click to open your backpack."
+  # Whether players can drop the backpack shortcut item (Q). Default false.
+  droppable: false

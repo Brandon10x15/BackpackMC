@@ -1,0 +1,89 @@
+# src/main/resources/plugin.yml
+name: BackpackMC
+main: com.brandon10x15.backpackmc.BackpackMCPlugin
+version: 1.0.0
+api-version: '1.21'
+author: Brandon10x15
+description: Backpack plugin with multiple storage backends and permissions-based sizes.
+
+commands:
+  backpack:
+    description: Open and manage backpacks
+    usage: /backpack [help|clean|sort|autosort|reload|update|migrate] [player] [toStorage]
+    aliases: [bp, pack]
+    permission: backpack.use
+  clearinventory:
+    description: Clear your or another player's inventory
+    usage: /clearinventory [player]
+    aliases: [ci, clearinv]
+
+permissions:
+  backpack.use:
+    description: Allows the player to use the backpack
+    default: false
+  backpack.size.1:
+    description: Backpack size 1 row
+    default: false
+  backpack.size.2:
+    description: Backpack size 2 rows
+    default: false
+  backpack.size.3:
+    description: Backpack size 3 rows
+    default: false
+  backpack.size.4:
+    description: Backpack size 4 rows
+    default: false
+  backpack.size.5:
+    description: Backpack size 5 rows
+    default: false
+  backpack.size.6:
+    description: Backpack size 6 rows
+    default: false
+  backpack.sort:
+    description: Allows the player to sort the backpack
+    default: false
+  backpack.clean:
+    description: Allows the player to clean their backpack
+    default: false
+  backpack.clean.other:
+    description: Allows the player to clean another player's backpack
+    default: op
+  backpack.fullpickup:
+    description: Enables auto pickup for the player (if enabled in config)
+    default: true
+  backpack.others:
+    description: Allows viewing other players' backpacks
+    default: op
+  backpack.others.edit:
+    description: Allows editing other players' backpacks
+    default: op
+  backpack.keepOnDeath:
+    description: Keep backpack contents on death
+    default: op
+  backpack.noCooldown:
+    description: No command cooldown
+    default: op
+  backpack.ignoreGameMode:
+    description: Bypass gamemode filter
+    default: op
+  backpack.ignoreWorldBlacklist:
+    description: Bypass world blacklist
+    default: op
+  backpack.update:
+    description: Use update command
+    default: op
+  backpack.reload:
+    description: Use reload command
+    default: op
+  backpack.migrate:
+    description: Use migrate command
+    default: op
+  backpack.autosort:
+    description: Toggle auto-sort mode
+    default: true
+  clearInventory:
+    description: Use clear inventory command
+    default: op
+  clearInventory.other:
+    description: Clear another player's inventory
+    default: op
