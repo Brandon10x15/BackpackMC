@@ -109,4 +109,9 @@ public class ConfigManager {
     public String autoSortDefaultMode() {
         return plugin.getConfig().getString(ConfigKeys.SETTINGS_AUTOSORT_DEFAULT, "LIGHT");
     }
+
+    // Clear inventory confirmation default
+    public boolean clearConfirmDefaultEnabled() {
+        return plugin.getConfig().getBoolean(ConfigKeys.SETTINGS_CLEAR_CONFIRM_DEFAULT, true);
+    }
 }

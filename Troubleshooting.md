@@ -1,56 +1,46 @@
-## Links:
-- Readme: [README.md](./README.md)
-- Installation: [Installation.md](./Installation.md)
-- Configuration: [Configuration.md](./Configuration.md)
-- Commands: [Commands.md](./Commands.md)
-- Permissions: [Permissions.md](./Permissions.md)
-- Storage Backends: [Storage.md](./Storage.md)
-- Shortcut Item: [Shortcut-Item.md](./Shortcut-Item.md)
-- Migration Guide: [Migration.md](./Migration.md)
-- Troubleshooting: [Troubleshooting.md](./Troubleshooting.md)
-- API (developers): [API.md](./API.md)
-- Events (developers): [Events.md](./Events.md)
-- FAQ: [FAQ.md](./FAQ.md)
+# Troubleshooting.md
 
-# Troubleshooting
+[README](README.md) | [Installation](Installation.md) | [Configuration](Configuration.md) | [Commands](Commands.md) | [Permissions](Permissions.md) | [Shortcut-Item](Shortcut-Item.md) | [Storage](Storage.md) | [Migration](Migration.md) | [API](API.md) | [Events](Events.md) | [FAQ](FAQ.md) | [Troubleshooting](Troubleshooting.md)
 
-## “You don’t have permission.”
-- Ensure the player has backpack.use.
-- For sizes, grant backpack.size.X.
-- For sorting, cleaning, autosorting, grant the corresponding nodes in [Permissions.md](./Permissions.md).
+## Cannot open backpack
 
-## “Cannot use backpacks in this world/gamemode.”
-- Check settings.worlds-blacklist and settings.restrict-gamemodes in config.yml.
-- Grant bypass: backpack.ignoreWorldBlacklist or backpack.ignoreGameMode.
+- Verify player has backpackmc.backpack.use.
+- Check cooldown; grant backpackmc.backpack.noCooldown if necessary.
+- Confirm not in a blacklisted world or restricted gamemode.
 
-## “Cannot store {item} in your backpack.”
-- The item is blocked by settings.item-filter.blocked in config.yml.
+## Shortcut item missing or duplicated
 
-## Auto-pickup doesn’t work
-- Ensure settings.auto-pickup-enabled = true.
-- Ensure player has backpack.fullpickup.
-- Confirm inventory is full or the item doesn’t fully fit (auto-pickup triggers only then).
-- Verify the material is not blocked.
+- On join, shortcut is given if enabled and player has use permission.
+- The plugin ensures exactly one shortcut per player; extra copies are automatically cleared.
+- Dropping is blocked unless droppable is true.
 
-## Shortcut item issues
-- Item missing: Rejoin or use /backpack; the plugin will re-create and deduplicate the shortcut.
-- Dropping blocked: Set shortcut-item.droppable = true if you want to allow dropping.
-- Can’t move into chests: This is intended; shortcut cannot be moved into non-player inventories.
+## Items not storing
 
-## MySQL won’t connect
-- Verify host, port, database, user, password, useSSL in config.yml.
-- Ensure firewall allows connections.
-- Check server logs for “MySQL init failed” and the error message.
+- Check settings.item-filter.blocked for disallowed materials.
+- Ensure player has backpackmc.backpack.use and not blocked by world/gamemode restrictions.
 
-## Backpacks lost after death
-- If settings.keep-on-death-default = false and player lacks backpack.keepOnDeath:
-  - Contents are cleared on death.
-- If settings.drop-on-death-if-not-keeping = true:
-  - Contents are dropped and then cleared.
+## Duplication or over-stacks observed
 
-## Changes don’t persist
-- The plugin saves on:
-  - Snapshot on backpack interactions
-  - Inventory close
-  - Plugin disable (flushAll)
-- Check server logs for storage errors, ensure backend is writable.
+- The plugin cancels problematic actions:
+    - collect-to-cursor and double-click inside the backpack
+    - right-click drag spread across the backpack GUI
+- Contents are sanitized:
+    - Item amounts clamped to max stack size
+    - Extra amounts split into additional valid stacks up to capacity
+- If you still observe issues, provide a reproduction and server logs.
+
+## Database or file errors
+
+- YAML:
+    - Ensure yaml.folder exists and is writable.
+- SQLite:
+    - Confirm sqlite.file path is writable by the server process.
+- MySQL:
+    - Verify credentials, host reachability, and permissions.
+    - Check for firewall blocks; ensure serverTimezone and SSL options match your environment.
+
+## Update checker not working
+
+- settings.updater.enabled must be true.
+- check-url must return plain text version string with status 200.
+- See console for errors.

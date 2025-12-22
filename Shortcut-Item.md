@@ -1,43 +1,33 @@
-## Links:
-- Readme: [README.md](./README.md)
-- Installation: [Installation.md](./Installation.md)
-- Configuration: [Configuration.md](./Configuration.md)
-- Commands: [Commands.md](./Commands.md)
-- Permissions: [Permissions.md](./Permissions.md)
-- Storage Backends: [Storage.md](./Storage.md)
-- Shortcut Item: [Shortcut-Item.md](./Shortcut-Item.md)
-- Migration Guide: [Migration.md](./Migration.md)
-- Troubleshooting: [Troubleshooting.md](./Troubleshooting.md)
-- API (developers): [API.md](./API.md)
-- Events (developers): [Events.md](./Events.md)
-- FAQ: [FAQ.md](./FAQ.md)
+# Shortcut-Item.md
 
-# Shortcut Item
+[README](README.md) | [Installation](Installation.md) | [Configuration](Configuration.md) | [Commands](Commands.md) | [Permissions](Permissions.md) | [Shortcut-Item](Shortcut-Item.md) | [Storage](Storage.md) | [Migration](Migration.md) | [API](API.md) | [Events](Events.md) | [FAQ](FAQ.md) | [Troubleshooting](Troubleshooting.md)
 
-A special item (default Material.BUNDLE) represents the player’s backpack.
+## Overview
 
-## Behavior
-- Right-click to open your backpack (hand or inventory right-click)
-- Drag/drop items onto the shortcut to store them instantly
-- Live preview:
-  - The bundle shows up to 8 sample items and a “fullness” bar based on occupied slots
-- Unique per player:
-  - The plugin ensures only one shortcut is present and updates its preview automatically
-- Moving:
-  - You can move the shortcut within your player inventory
-  - Cannot move into non-player containers (chests, anvils, etc.)
-  - Shift-click protection prevents moving it to top container inventory
-- Dropping:
-  - Dropping is blocked unless shortcut-item.droppable = true
-- Forced slot:
-  - shortcut-item.force-slot (0–8) pins the item to a hotbar slot
-  - -1 disables forcing; item will be added to inventory
+- Material: configurable (default BUNDLE)
+- Name and lore: configurable with color codes (&)
+- Given on join if enabled and player has use permission
+- Persistent tag prevents it from being confused with normal items
+- Dropping is blocked unless shortcut-item.droppable is true
 
-## Permissions and Restrictions
-- Requires backpack.use to open
-- Respects world blacklist and gamemode restrictions unless the player has bypass permissions
-- Blocked materials (settings.item-filter.blocked) cannot be stored; players see a message naming the item
+## Interactions
 
-## Tips
-- If players lose the shortcut item, rejoin or run /backpack and the item will be re-created and deduplicated.
-- Creative inventory: movement allowed; drop protection remains enforced by the drop event.
+- Right-click in hand:
+    - Opens your backpack (respects world and gamemode restrictions)
+- Right-click in player inventory:
+    - Quick-open from within your inventory UI
+- Drag or click items onto the shortcut:
+    - Sends items into your backpack with feedback action bar
+    - Blocked materials respect configuration
+- Movement restrictions:
+    - Shortcut can be moved within player inventory
+    - Moving into non-player inventories is blocked (chests, etc.)
+    - Shift-click transfers to open containers are blocked
+    - Clicking outside inventories with the shortcut is blocked
+    - Dropping is blocked if droppable is false
+
+## Preview
+
+- If material is BUNDLE, preview shows actual backpack contents snapshot
+- Fullness representation avoids showing 100 percent unless there are zero slots left
+- Preview updates when backpack contents change and on inventory close

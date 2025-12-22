@@ -1,50 +1,31 @@
-## Links:
-- Readme: [README.md](./README.md)
-- Installation: [Installation.md](./Installation.md)
-- Configuration: [Configuration.md](./Configuration.md)
-- Commands: [Commands.md](./Commands.md)
-- Permissions: [Permissions.md](./Permissions.md)
-- Storage Backends: [Storage.md](./Storage.md)
-- Shortcut Item: [Shortcut-Item.md](./Shortcut-Item.md)
-- Migration Guide: [Migration.md](./Migration.md)
-- Troubleshooting: [Troubleshooting.md](./Troubleshooting.md)
-- API (developers): [API.md](./API.md)
-- Events (developers): [Events.md](./Events.md)
-- FAQ: [FAQ.md](./FAQ.md)
+# Storage.md
 
-# Storage Backends
+[README](README.md) | [Installation](Installation.md) | [Configuration](Configuration.md) | [Commands](Commands.md) | [Permissions](Permissions.md) | [Shortcut-Item](Shortcut-Item.md) | [Storage](Storage.md) | [Migration](Migration.md) | [API](API.md) | [Events](Events.md) | [FAQ](FAQ.md) | [Troubleshooting](Troubleshooting.md)
 
-BackpackMC supports three backends:
+## Backends
 
-## YAML
-- Simple file-based storage under storage.yaml.folder (default “data”)
-- Each player stored as <UUID>.yml with Base64 contents string
-- Pros: easy to read/backup
-- Cons: slower for large servers
+- YAML
+    - Stores each backpack in plugins/BackpackMC/<yaml.folder>/<uuid>.yml
+    - Contents serialized as Base64
+- SQLite
+    - File path configured by sqlite.file
+    - Table schema:
+        - backpacks(uuid TEXT PRIMARY KEY, contents TEXT)
+- MySQL
+    - Connection parameters configured under storage.mysql
+    - Table schema:
+        - backpacks(uuid CHAR(36) PRIMARY KEY, contents MEDIUMTEXT)
 
-## SQLite
-- Local database file (settings.storage.sqlite.file)
-- Table:
-  - uuid TEXT PRIMARY KEY
-  - contents TEXT
-- Pros: single-file DB, better than YAML for scale
-- Cons: local file access
+## Performance and safety
 
-## MySQL
-- External database
-- Table:
-  - uuid CHAR(36) PRIMARY KEY
-  - contents MEDIUMTEXT
-- Pros: scalable, central DB
-- Cons: requires setup and credentials
+- Synchronous save on flush; asynchronous saves for most operations
+- Contents are sanitized to avoid over-stacks and duplication:
+    - Amounts clamped to valid stack sizes
+    - Extra amounts split across additional slots up to capacity
+    - Excess beyond capacity is discarded (never persisted)
 
-## Choosing a Backend
-- Small servers: YAML or SQLite
-- Larger/hosted servers: MySQL
+## Switching backends
 
-## Migration
-Use /backpack migrate <YAML|SQLITE|MYSQL> to convert all existing entries to your target backend. See [Migration.md](./Migration.md).
-
-## Data Format
-- Item contents are serialized using BukkitObject streams and encoded in Base64.
-- Stored as a single string per backpack.
+- Set storage.type in config.yml
+- Run /backpack migrate <YAML|SQLITE|MYSQL> to copy existing data
+- Restart recommended after migration

@@ -1,60 +1,24 @@
-## Links:
-- Readme: [README.md](./README.md)
-- Installation: [Installation.md](./Installation.md)
-- Configuration: [Configuration.md](./Configuration.md)
-- Commands: [Commands.md](./Commands.md)
-- Permissions: [Permissions.md](./Permissions.md)
-- Storage Backends: [Storage.md](./Storage.md)
-- Shortcut Item: [Shortcut-Item.md](./Shortcut-Item.md)
-- Migration Guide: [Migration.md](./Migration.md)
-- Troubleshooting: [Troubleshooting.md](./Troubleshooting.md)
-- API (developers): [API.md](./API.md)
-- Events (developers): [Events.md](./Events.md)
-- FAQ: [FAQ.md](./FAQ.md)
+# README.md
 
-# BackpackMC
+[README](README.md) | [Installation](Installation.md) | [Configuration](Configuration.md) | [Commands](Commands.md) | [Permissions](Permissions.md) | [Shortcut-Item](Shortcut-Item.md) | [Storage](Storage.md) | [Migration](Migration.md) | [API](API.md) | [Events](Events.md) | [FAQ](FAQ.md) | [Troubleshooting](Troubleshooting.md)
 
-A modern backpack plugin for Paper/Spigot servers (api-version 1.21). Players get a personal backpack with:
-- Permissions-based sizes (1–6 rows)
-- Auto-pickup into backpacks
-- Auto-sort modes (OFF, LIGHT, AGGRESSIVE)
-- Configurable item blacklist
-- Shortcut item (Bundle) with live preview
-- Multiple storage backends (YAML, SQLite, MySQL)
-- Migration tools and update checker
-- Clean, sort, open others’ backpacks with permissions
+## BackpackMC
 
-## Requirements
-- Server: Paper or Spigot 1.21+
-- Java: 17+
-- Storage drivers:
-  - YAML: no external driver
-  - SQLite/MySQL: require appropriate JDBC drivers available to the server
+BackpackMC adds personal, configurable backpacks to Minecraft servers. Players get a persistent inventory they can open via command or a shortcut item, with options for auto-pickup, sorting, previews, and storage backends (YAML, SQLite, MySQL).
 
-## Quick Start
-1. Drop BackpackMC.jar into your server’s plugins folder.
-2. Start the server once to generate config and message files.
-3. Edit storage backend in config.yml (YAML default; use SQLite or MySQL if preferred).
-4. Grant permissions to players per your design (see [Permissions.md](./Permissions.md)).
-5. Players use /backpack or the shortcut item to open their backpack.
+- Version: 1.0.0
+- Minecraft API: 1.20
+- Features:
+    - Personal backpack GUI with up to 6 rows based on permissions
+    - Shortcut item (default BUNDLE) with dynamic preview
+    - Auto-pickup to backpack when inventory is full
+    - Auto-sort modes (OFF, LIGHT, AGGRESSIVE)
+    - World and gamemode restrictions
+    - Clear inventory commands with optional confirmation
+    - Multi-backend storage (YAML, SQLite, MySQL) and migration tools
+    - Language files with default merging
+    - Update checker (optional)
+    - API and events for developers
+    - Duplication-safe interactions and content sanitization
 
-## Core Features
-- Backpack sizes by permission nodes backpack.size.1–6. If a player has backpack.use but no size permissions, they get 1 row.
-- Auto-pickup into backpack when inventory is full, gated by backpack.fullpickup and the configured item blacklist.
-- Drag items onto the shortcut item to store them instantly; right-click to open.
-- Per-player auto-sort preference: toggle with /backpack autosort.
-- Configurable world blacklist and gamemode restrictions, with bypass permissions.
-- Storage options with simple migration command.
-- Optional update checker.
-
-## For Players
-- Open: /backpack or right-click the Backpack shortcut item.
-- Clean your backpack: /backpack clean
-- Sort and auto-sort: /backpack sort; /backpack autosort off|light|aggressive
-- Store items quickly: drag/drop items onto the shortcut item in your inventory.
-
-## For Server Owners
-- Configure storage backend and behavior in config.yml.
-- Customize messages in messages/en_US.yml or messages/de_DE.yml; set language in config.yml.
-- Grant permissions for sizes, viewing others, editing others, bypasses, etc.
-- Use /backpack migrate to move data across backends.
+Start with Installation, then learn Configuration, Commands, and Permissions. Server admins can choose Storage and run Migration. Developers can use the API and Events. See Troubleshooting and FAQ for common questions.

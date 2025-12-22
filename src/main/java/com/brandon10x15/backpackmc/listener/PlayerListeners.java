@@ -43,7 +43,7 @@ public class PlayerListeners implements Listener {
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
         if (!config.shortcutEnabled() || !config.shortcutGiveOnJoin()) return;
-        if (!p.hasPermission("backpack.use")) return;
+        if (!p.hasPermission("backpackmc.backpack.use")) return;
 
         ensureUniqueShortcut(p);
     }
@@ -56,12 +56,19 @@ public class PlayerListeners implements Listener {
         ItemStack inHand = p.getInventory().getItemInMainHand();
         if (ItemUtils.hasShortcutTag(inHand, shortcutKey)) {
             e.setCancelled(true);
-            if (!p.hasPermission("backpack.use")) {
+            if (!p.hasPermission("backpackmc.backpack.use")) {
                 p.sendMessage(lang.color(lang.msg("no-permission")));
                 return;
             }
-            if (!p.hasPermission("backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
-            if (!p.hasPermission("backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
+            if (!p.hasPermission("backpackmc.backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
+            if (!p.hasPermission("backpackmc.backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
+
+            // Prevent opening if the backpack is already open
+            InventoryView view = p.getOpenInventory();
+            if (view != null && service.isViewerViewingBackpack(p.getUniqueId(), view.getTopInventory())) {
+                return;
+            }
+
             service.openBackpack(p, p.getUniqueId(), true);
         }
     }
@@ -69,7 +76,7 @@ public class PlayerListeners implements Listener {
     @EventHandler
     public void onDeath(PlayerDeathEvent e) {
         Player p = e.getEntity();
-        boolean keep = config.keepOnDeathDefault() || p.hasPermission("backpack.keepOnDeath");
+        boolean keep = config.keepOnDeathDefault() || p.hasPermission("backpackmc.backpack.keepOnDeath");
         if (!keep) {
             if (config.dropOnDeathIfNotKeeping()) {
                 var bp = service.getOrCreateBackpack(p.getUniqueId());
@@ -127,6 +134,14 @@ public class PlayerListeners implements Listener {
         InventoryView view = e.getView();
         boolean noContainerOpen = view.getTopInventory().getType() == InventoryType.CRAFTING;
 
+        // Additional anti-duplication: block collect-to-cursor/double-click inside backpack view
+        if (service.isViewerViewingBackpack(p.getUniqueId(), view.getTopInventory())) {
+            if (e.getAction() == InventoryAction.COLLECT_TO_CURSOR || e.getClick() == ClickType.DOUBLE_CLICK) {
+                e.setCancelled(true);
+                return;
+            }
+        }
+
         // Store items when dropping onto the backpack shortcut in player inventory
         if (currentIsShortcut
                 && e.getClickedInventory() != null
@@ -137,12 +152,12 @@ public class PlayerListeners implements Listener {
                 && !cursorIsShortcut) {
 
             e.setCancelled(true); // prevent replacing the shortcut
-            if (!p.hasPermission("backpack.use")) {
+            if (!p.hasPermission("backpackmc.backpack.use")) {
                 p.sendMessage(lang.color(lang.msg("no-permission")));
                 return;
             }
-            if (!p.hasPermission("backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
-            if (!p.hasPermission("backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
+            if (!p.hasPermission("backpackmc.backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
+            if (!p.hasPermission("backpackmc.backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
 
             if (config.blockedMaterials().contains(cursor.getType())) {
                 String itemName = cursor.hasItemMeta() && cursor.getItemMeta().hasDisplayName()
@@ -173,12 +188,19 @@ public class PlayerListeners implements Listener {
                 && (e.getClick().isRightClick() || e.getAction() == InventoryAction.PICKUP_HALF)) {
 
             e.setCancelled(true); // prevent picking up half stack
-            if (!p.hasPermission("backpack.use")) {
+            if (!p.hasPermission("backpackmc.backpack.use")) {
                 p.sendMessage(lang.color(lang.msg("no-permission")));
                 return;
             }
-            if (!p.hasPermission("backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
-            if (!p.hasPermission("backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
+            if (!p.hasPermission("backpackmc.backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
+            if (!p.hasPermission("backpackmc.backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
+
+            // Prevent opening if the backpack is already open
+            InventoryView curView = p.getOpenInventory();
+            if (curView != null && service.isViewerViewingBackpack(p.getUniqueId(), curView.getTopInventory())) {
+                return;
+            }
+
             service.openBackpack(p, p.getUniqueId(), true);
             return;
         }
@@ -212,10 +234,11 @@ public class PlayerListeners implements Listener {
         if (!config.shortcutEnabled()) return;
         if (!(e.getWhoClicked() instanceof Player p)) return;
 
-        ItemStack cursor = e.getOldCursor();
         InventoryView view = e.getView();
         boolean noContainerOpen = view.getTopInventory().getType() == InventoryType.CRAFTING;
         int topSize = view.getTopInventory().getSize();
+
+        ItemStack cursor = e.getOldCursor();
 
         // Cancel if dragging the shortcut itself into a non-player container (top inventory when a container is open)
         if (ItemUtils.hasShortcutTag(cursor, shortcutKey)) {
@@ -224,6 +247,16 @@ public class PlayerListeners implements Listener {
                 e.setCancelled(true);
             }
             return;
+        }
+
+        // Anti-duplication: prevent right-click drag spreading across backpack top inventory
+        if (service.isViewerViewingBackpack(p.getUniqueId(), view.getTopInventory())) {
+            boolean affectsTop = e.getRawSlots().stream().anyMatch(slot -> slot < topSize);
+            if (affectsTop && e.getType() == DragType.SINGLE) {
+                // Right-click drag (place-one per slot) — cancel to prevent duping
+                e.setCancelled(true);
+                return;
+            }
         }
 
         // Store items when drag targets include the backpack shortcut slot in the player's inventory
@@ -239,12 +272,12 @@ public class PlayerListeners implements Listener {
 
             if (includesShortcutSlot) {
                 e.setCancelled(true);
-                if (!p.hasPermission("backpack.use")) {
+                if (!p.hasPermission("backpackmc.backpack.use")) {
                     p.sendMessage(lang.color(lang.msg("no-permission")));
                     return;
                 }
-                if (!p.hasPermission("backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
-                if (!p.hasPermission("backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
+                if (!p.hasPermission("backpackmc.backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
+                if (!p.hasPermission("backpackmc.backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
 
                 if (config.blockedMaterials().contains(cursor.getType())) {
                     String itemName = cursor.hasItemMeta() && cursor.getItemMeta().hasDisplayName()
@@ -305,7 +338,8 @@ public class PlayerListeners implements Listener {
     private void ensureUniqueShortcut(Player p) {
         var bp = service.getOrCreateBackpack(p.getUniqueId());
         List<ItemStack> preview = bp.getContents(); // snapshot for thumbnails
-        ItemStack desired = ItemUtils.createShortcutItemWithPreview(config, shortcutKey, preview);
+        int capacity = service.resolveBackpackSize(p) * 9;
+        ItemStack desired = ItemUtils.createShortcutItemWithPreview(config, shortcutKey, preview, capacity);
 
         int firstSlot = -1;
         int count = 0;

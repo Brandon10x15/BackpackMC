@@ -2,88 +2,142 @@
 name: BackpackMC
 main: com.brandon10x15.backpackmc.BackpackMCPlugin
 version: 1.0.0
-api-version: '1.21'
-author: Brandon10x15
-description: Backpack plugin with multiple storage backends and permissions-based sizes.
+api-version: 1.20
+loadbefore:
+  - Essentials
+  - EssentialsX
 
 commands:
   backpack:
-    description: Open and manage backpacks
-    usage: /backpack [help|clean|sort|autosort|reload|update|migrate] [player] [toStorage]
-    aliases: [bp, pack]
-    permission: backpack.use
+    description: Open your backpack or manage settings
+    usage: /backpack
+    permission: backpackmc.backpack.use
+
   clearinventory:
-    description: Clear your or another player's inventory
+    description: Clear inventory (confirmation if enabled)
     usage: /clearinventory [player]
-    aliases: [ci, clearinv]
+    permission: backpackmc.clearInventory
+  ci:
+    description: Clear inventory (alias)
+    usage: /ci [player]
+    permission: backpackmc.clearInventory
+  eci:
+    description: Clear inventory (Essentials alias)
+    usage: /eci [player]
+    permission: backpackmc.clearInventory
+  clean:
+    description: Clear inventory (alias)
+    usage: /clean [player]
+    permission: backpackmc.clearInventory
+  eclean:
+    description: Clear inventory (Essentials alias)
+    usage: /eclean [player]
+    permission: backpackmc.clearInventory
+  clear:
+    description: Clear inventory (alias)
+    usage: /clear [player]
+    permission: backpackmc.clearInventory
+  eclear:
+    description: Clear inventory (Essentials alias)
+    usage: /eclear [player]
+    permission: backpackmc.clearInventory
+  clearinvent:
+    description: Clear inventory (alias)
+    usage: /clearinvent [player]
+    permission: backpackmc.clearInventory
+  eclearinvent:
+    description: Clear inventory (Essentials alias)
+    usage: /eclearinvent [player]
+    permission: backpackmc.clearInventory
+  eclearinventory:
+    description: Clear inventory (Essentials alias)
+    usage: /eclearinventory [player]
+    permission: backpackmc.clearInventory
+
+  clearinventoryconfirmtoggle:
+    description: Toggle clear inventory confirmation
+    usage: /clearinventoryconfirmtoggle
+  eclearinventoryconfirmtoggle:
+    description: Toggle clear inventory confirmation (Essentials alias)
+    usage: /eclearinventoryconfirmtoggle
+
+  clearinventoryconfirmoff:
+    description: Disable clear inventory confirmation
+    usage: /clearinventoryconfirmoff
+  eclearinventoryconfirmoff:
+    description: Disable clear inventory confirmation (Essentials alias)
+    usage: /eclearinventoryconfirmoff
+  clearconfirmoff:
+    description: Disable clear inventory confirmation
+    usage: /clearconfirmoff
+  eclearconfirmoff:
+    description: Disable clear inventory confirmation (Essentials alias)
+    usage: /eclearconfirmoff
+
+  clearconfirmon:
+    description: Enable clear inventory confirmation
+    usage: /clearconfirmon
+  eclearconfirmon:
+    description: Enable clear inventory confirmation (Essentials alias)
+    usage: /eclearconfirmon
+
+  clearconfirm:
+    description: Confirm pending inventory clear
+    usage: /clearconfirm
+  eclearconfirm:
+    description: Confirm pending inventory clear (Essentials alias)
+    usage: /eclearconfirm
 
 permissions:
-  backpack.use:
-    description: Allows the player to use the backpack
-    default: false
-  backpack.size.1:
-    description: Backpack size 1 row
-    default: false
-  backpack.size.2:
-    description: Backpack size 2 rows
-    default: false
-  backpack.size.3:
-    description: Backpack size 3 rows
-    default: false
-  backpack.size.4:
-    description: Backpack size 4 rows
-    default: false
-  backpack.size.5:
-    description: Backpack size 5 rows
-    default: false
-  backpack.size.6:
-    description: Backpack size 6 rows
-    default: false
-  backpack.sort:
-    description: Allows the player to sort the backpack
-    default: false
-  backpack.clean:
-    description: Allows the player to clean their backpack
-    default: false
-  backpack.clean.other:
-    description: Allows the player to clean another player's backpack
-    default: op
-  backpack.fullpickup:
-    description: Enables auto pickup for the player (if enabled in config)
+  backpackmc.backpack.use:
+    description: Use backpack
     default: true
-  backpack.others:
-    description: Allows viewing other players' backpacks
+  backpackmc.backpack.noCooldown:
+    description: Bypass backpack command cooldown
     default: op
-  backpack.others.edit:
-    description: Allows editing other players' backpacks
-    default: op
-  backpack.keepOnDeath:
-    description: Keep backpack contents on death
-    default: op
-  backpack.noCooldown:
-    description: No command cooldown
-    default: op
-  backpack.ignoreGameMode:
-    description: Bypass gamemode filter
-    default: op
-  backpack.ignoreWorldBlacklist:
-    description: Bypass world blacklist
-    default: op
-  backpack.update:
-    description: Use update command
-    default: op
-  backpack.reload:
-    description: Use reload command
-    default: op
-  backpack.migrate:
-    description: Use migrate command
-    default: op
-  backpack.autosort:
-    description: Toggle auto-sort mode
+  backpackmc.backpack.clean:
+    description: Clean your backpack
     default: true
-  clearInventory:
-    description: Use clear inventory command
+  backpackmc.backpack.clean.other:
+    description: Clean others' backpacks
     default: op
-  clearInventory.other:
-    description: Clear another player's inventory
+  backpackmc.backpack.sort:
+    description: Sort your backpack
+    default: true
+  backpackmc.backpack.autosort:
+    description: Change auto-sort mode
+    default: true
+  backpackmc.backpack.reload:
+    description: Reload plugin
+    default: op
+  backpackmc.backpack.update:
+    description: Check for update
+    default: op
+  backpackmc.backpack.migrate:
+    description: Migrate storage backend
+    default: op
+  backpackmc.backpack.others:
+    description: Open others' backpacks
+    default: op
+  backpackmc.backpack.others.edit:
+    description: Edit others' backpacks
+    default: op
+  backpackmc.backpack.ignoreWorldBlacklist:
+    description: Ignore world blacklist
+    default: op
+  backpackmc.backpack.ignoreGameMode:
+    description: Ignore restricted gamemodes
+    default: op
+  backpackmc.backpack.keepOnDeath:
+    description: Keep backpack on death
+    default: true
+  backpackmc.backpack.fullpickup:
+    description: Pickup to backpack when inventory is full
+    default: true
+
+  backpackmc.clearInventory:
+    description: Clear your inventory
+    default: true
+  backpackmc.clearInventory.other:
+    description: Clear others' inventories
     default: op

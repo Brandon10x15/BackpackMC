@@ -36,4 +36,7 @@ public final class ConfigKeys {
 
     // Auto-sort
     public static final String SETTINGS_AUTOSORT_DEFAULT = "settings.auto-sort.default-mode";
+
+    // Clear inventory confirmation default
+    public static final String SETTINGS_CLEAR_CONFIRM_DEFAULT = "settings.clear-inventory.confirmation-default-enabled";
 }

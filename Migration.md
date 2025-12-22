@@ -1,41 +1,22 @@
-## Links:
-- Readme: [README.md](./README.md)
-- Installation: [Installation.md](./Installation.md)
-- Configuration: [Configuration.md](./Configuration.md)
-- Commands: [Commands.md](./Commands.md)
-- Permissions: [Permissions.md](./Permissions.md)
-- Storage Backends: [Storage.md](./Storage.md)
-- Shortcut Item: [Shortcut-Item.md](./Shortcut-Item.md)
-- Migration Guide: [Migration.md](./Migration.md)
-- Troubleshooting: [Troubleshooting.md](./Troubleshooting.md)
-- API (developers): [API.md](./API.md)
-- Events (developers): [Events.md](./Events.md)
-- FAQ: [FAQ.md](./FAQ.md)
+# Migration.md
 
-# Migration Guide
+[README](README.md) | [Installation](Installation.md) | [Configuration](Configuration.md) | [Commands](Commands.md) | [Permissions](Permissions.md) | [Shortcut-Item](Shortcut-Item.md) | [Storage](Storage.md) | [Migration](Migration.md) | [API](API.md) | [Events](Events.md) | [FAQ](FAQ.md) | [Troubleshooting](Troubleshooting.md)
 
-Safely migrate your data between YAML, SQLite, and MySQL.
+## Migration command
 
-## Preparation
-- Back up your current storage:
-  - YAML: copy the storage folder
-  - SQLite: copy the .db file
-  - MySQL: dump the table
-- Ensure the target backend is configured in config.yml (host, credentials, file path)
+- /backpack migrate <YAML|SQLITE|MYSQL>
+- Requires backpackmc.backpack.migrate
+- Copies all records listed by the current backend into the target backend
 
-## Command
-- Run:
-  - /backpack migrate YAML
-  - /backpack migrate SQLITE
-  - /backpack migrate MYSQL
-- Requires: backpack.migrate
-- The plugin initializes the target backend, iterates all entries, and saves them to the target.
+## Steps to migrate
 
-## After Migration
-- Switch storage.type in config.yml to the new backend.
-- Restart the server or /backpack reload.
-- Spot-check a few users’ backpacks by opening them and verifying contents.
+- Configure target backend settings in config.yml (e.g., MySQL credentials or SQLite file).
+- Run the migrate command.
+- Observe migration count feedback.
+- Update storage.type to the new backend in config.yml.
+- Restart the server.
 
 ## Notes
-- The migration runs asynchronously; you’ll receive a completed count.
-- Migration does not delete from the source; keep backups until verified.
+
+- Migration uses simple load/save serialization of contents; ensure correct permissions and connectivity.
+- Consider backing up your data folder or database before migrating.

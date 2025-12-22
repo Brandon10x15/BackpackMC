@@ -42,11 +42,11 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(lang.prefix() + "Console must specify a player.");
                 return true;
             }
-            if (!p.hasPermission("backpack.use")) {
+            if (!p.hasPermission("backpackmc.backpack.use")) {
                 p.sendMessage(lang.color(lang.msg("no-permission")));
                 return true;
             }
-            if (!p.hasPermission("backpack.noCooldown") && !cooldownOk(p)) {
+            if (!p.hasPermission("backpackmc.backpack.noCooldown") && !cooldownOk(p)) {
                 int left = (int) Math.max(0, (lastUse.get(p.getUniqueId()) + config.getCooldownMillis() - System.currentTimeMillis()) / 1000);
                 p.sendMessage(lang.color(lang.msg("cooldown").replace("{seconds}", String.valueOf(left))));
                 return true;
@@ -70,7 +70,7 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                         sender.sendMessage(lang.prefix() + "Console must specify a player.");
                         return true;
                     }
-                    if (!p.hasPermission("backpack.clean")) {
+                    if (!p.hasPermission("backpackmc.backpack.clean")) {
                         p.sendMessage(lang.color(lang.msg("no-permission")));
                         return true;
                     }
@@ -78,7 +78,7 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                     p.sendMessage(lang.color(lang.msg("clean-self")));
                     return true;
                 } else {
-                    if (!sender.hasPermission("backpack.clean.other")) {
+                    if (!sender.hasPermission("backpackmc.backpack.clean.other")) {
                         sender.sendMessage(lang.color(lang.msg("no-permission")));
                         return true;
                     }
@@ -97,7 +97,7 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(lang.prefix() + "Console cannot sort.");
                     return true;
                 }
-                if (!p.hasPermission("backpack.sort")) {
+                if (!p.hasPermission("backpackmc.backpack.sort")) {
                     p.sendMessage(lang.color(lang.msg("no-permission")));
                     return true;
                 }
@@ -110,7 +110,7 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(lang.prefix() + "Console cannot toggle auto-sort.");
                     return true;
                 }
-                if (!p.hasPermission("backpack.autosort")) {
+                if (!p.hasPermission("backpackmc.backpack.autosort")) {
                     p.sendMessage(lang.color(lang.msg("no-permission")));
                     return true;
                 }
@@ -137,7 +137,7 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             case "reload" -> {
-                if (!sender.hasPermission("backpack.reload")) {
+                if (!sender.hasPermission("backpackmc.backpack.reload")) {
                     sender.sendMessage(lang.color(lang.msg("no-permission")));
                     return true;
                 }
@@ -148,7 +148,7 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             case "update" -> {
-                if (!sender.hasPermission("backpack.update")) {
+                if (!sender.hasPermission("backpackmc.backpack.update")) {
                     sender.sendMessage(lang.color(lang.msg("no-permission")));
                     return true;
                 }
@@ -168,7 +168,7 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             case "migrate" -> {
-                if (!sender.hasPermission("backpack.migrate")) {
+                if (!sender.hasPermission("backpackmc.backpack.migrate")) {
                     sender.sendMessage(lang.color(lang.msg("no-permission")));
                     return true;
                 }
@@ -192,7 +192,7 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
             }
             default -> {
                 // /backpack <player>
-                if (!sender.hasPermission("backpack.others")) {
+                if (!sender.hasPermission("backpackmc.backpack.others")) {
                     sender.sendMessage(lang.color(lang.msg("no-permission")));
                     return true;
                 }
@@ -201,7 +201,7 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(lang.color(lang.msg("not-online")));
                     return true;
                 }
-                boolean editable = sender.hasPermission("backpack.others.edit");
+                boolean editable = sender.hasPermission("backpackmc.backpack.others.edit");
                 if (sender instanceof Player viewer) {
                     viewer.sendMessage(lang.color(lang.msg("open-other").replace("{player}", target.getName())));
                     service.openBackpack(viewer, target.getUniqueId(), editable);
@@ -226,7 +226,8 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
 
     private void ensureUniqueShortcut(Player p) {
         var bp = service.getOrCreateBackpack(p.getUniqueId());
-        ItemStack desired = ItemUtils.createShortcutItemWithPreview(config, shortcutKey, bp.getContents());
+        int capacity = service.resolveBackpackSize(p) * 9;
+        ItemStack desired = ItemUtils.createShortcutItemWithPreview(config, shortcutKey, bp.getContents(), capacity);
 
         int firstSlot = -1;
         var inv = p.getInventory();

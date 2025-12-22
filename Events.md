@@ -1,45 +1,52 @@
-## Links:
-- Readme: [README.md](./README.md)
-- Installation: [Installation.md](./Installation.md)
-- Configuration: [Configuration.md](./Configuration.md)
-- Commands: [Commands.md](./Commands.md)
-- Permissions: [Permissions.md](./Permissions.md)
-- Storage Backends: [Storage.md](./Storage.md)
-- Shortcut Item: [Shortcut-Item.md](./Shortcut-Item.md)
-- Migration Guide: [Migration.md](./Migration.md)
-- Troubleshooting: [Troubleshooting.md](./Troubleshooting.md)
-- API (developers): [API.md](./API.md)
-- Events (developers): [Events.md](./Events.md)
-- FAQ: [FAQ.md](./FAQ.md)
+# Events.md
 
-# Events
+[README](README.md) | [Installation](Installation.md) | [Configuration](Configuration.md) | [Commands](Commands.md) | [Permissions](Permissions.md) | [Shortcut-Item](Shortcut-Item.md) | [Storage](Storage.md) | [Migration](Migration.md) | [API](API.md) | [Events](Events.md) | [FAQ](FAQ.md) | [Troubleshooting](Troubleshooting.md)
 
 ## BackpackOpenEvent
-- Package: com.brandon10x15.backpackmc.api.event
+
+- Fired when a backpack is opened.
 - Fields:
-  - Player getViewer()
-  - UUID getTarget()
-  - boolean isEditable()
-- Handler:
-```java
-@EventHandler
-public void onBackpackOpen(BackpackOpenEvent e) {
-    Player viewer = e.getViewer();
-    UUID target = e.getTarget();
-    boolean editable = e.isEditable();
-    // e.g., audit, restrict, or notify
-}
-```
+    - viewer: Player
+    - target: UUID (owner of the backpack)
+    - editable: boolean (intent for whether edits are expected)
+- Handlers:
+    - static HandlerList getHandlerList()
+    - HandlerList getHandlers()
+
 ## BackpackCleanEvent
-- Package: com.brandon10x15.backpackmc.api.event
+
+- Fired when a backpack is cleaned (contents set to null).
 - Fields:
-  - UUID getTarget()
-- Handler:
+    - target: UUID (owner of the backpack)
+- Handlers:
+    - static HandlerList getHandlerList()
+    - HandlerList getHandlers()
+
+## Example listener
+
 ```java
-@EventHandler
-public void onBackpackClean(BackpackCleanEvent e) {
-    UUID target = e.getTarget();
-    // e.g., log cleanup or restore defaults
+@org.bukkit.event.EventHandler
+public void onOpen(com.brandon10x15.backpackmc.api.event.BackpackOpenEvent e) {
+    org.bukkit.entity.Player viewer = e.getViewer();
+    java.util.UUID target = e.getTarget();
+    boolean editable = e.isEditable();
+    // your logic here
+}
+
+@org.bukkit.event.EventHandler
+public void onClean(com.brandon10x15.backpackmc.api.event.BackpackCleanEvent e) {
+    java.util.UUID target = e.getTarget();
+    // your logic here
 }
 ```
-Both events extend org.bukkit.event.Event and provide static HandlerList per Bukkit conventions.
+
+## Editing behavior via events
+
+- BackpackOpenEvent editable flag:
+    - Indicates whether the viewer intends to edit the target’s backpack.
+    - You can restrict editing in your listener by closing the inventory or adjusting permissions.
+
+## Snapshot timing
+
+- The plugin snapshots backpack contents after interactions and on close to ensure persistence and preview accuracy.
+- If you add custom UI items to the backpack, ensure they adhere to valid stack sizes to avoid being sanitized away.

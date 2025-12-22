@@ -30,6 +30,8 @@ settings:
       - COMMAND_BLOCK
   keep-on-death-default: true # If false, backpacks are cleared unless player has backpack.keepOnDeath
   drop-on-death-if-not-keeping: false
+  clear-inventory:
+    confirmation-default-enabled: true
   # Default auto-sort mode for players: OFF, LIGHT, AGGRESSIVE
   auto-sort:
     default-mode: LIGHT

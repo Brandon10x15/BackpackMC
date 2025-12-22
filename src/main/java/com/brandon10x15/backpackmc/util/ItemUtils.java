@@ -97,8 +97,8 @@ public class ItemUtils {
         return stack;
     }
 
-    // Updated: make Bundle "fullness" reflect backpack occupancy based on preview size and empty slots.
-    public static ItemStack createShortcutItemWithPreview(ConfigManager cfg, NamespacedKey key, List<ItemStack> preview) {
+    // Show actual items only; fullness bar reaches 100% ONLY when there are 0 slots left.
+    public static ItemStack createShortcutItemWithPreview(ConfigManager cfg, NamespacedKey key, List<ItemStack> preview, int capacitySlots) {
         ItemStack stack = new ItemStack(cfg.shortcutMaterial());
         ItemMeta meta = stack.getItemMeta();
         meta.setDisplayName(org.bukkit.ChatColor.translateAlternateColorCodes('&', cfg.shortcutName()));
@@ -108,50 +108,68 @@ public class ItemUtils {
             meta.setLore(colored);
         }
 
-        // If using a Bundle, populate its BundleMeta with a snapshot and amounts distributed to reflect fullness.
         if (stack.getType() == Material.BUNDLE && meta instanceof BundleMeta bm) {
-            int capacity = preview == null ? 0 : preview.size(); // rows*9
-            int usedSlots = 0;
-            if (preview != null) {
-                for (ItemStack it : preview) {
-                    if (it != null && it.getType() != Material.AIR) usedSlots++;
-                }
-            }
-            // Normalize to bundle capacity (64 units). When capacity is 0, show empty.
-            int fullnessUnits = capacity <= 0 ? 0 : Math.max(0, Math.min(64, (int) Math.round(64.0 * usedSlots / capacity)));
+            int capacity = Math.max(0, capacitySlots);
 
-            // Build up to 8 sample items for thumbnail display
-            List<ItemStack> shown = new ArrayList<>();
-            if (preview != null) {
-                for (ItemStack it : preview) {
+            // Collect actual non-empty items within allowed capacity
+            List<ItemStack> nonEmpty = new ArrayList<>();
+            int usedSlots = 0;
+            if (preview != null && capacity > 0) {
+                int limit = Math.min(capacity, preview.size());
+                for (int i = 0; i < limit; i++) {
+                    ItemStack it = preview.get(i);
                     if (it != null && it.getType() != Material.AIR) {
-                        ItemStack one = it.clone();
-                        one.setAmount(1);
-                        shown.add(one);
-                        if (shown.size() >= 8) break; // limit preview count
+                        nonEmpty.add(it);
+                        usedSlots++;
                     }
                 }
             }
 
-            // Distribute fullness units across shown items so the bundle bar reflects occupancy.
-            if (!shown.isEmpty() && fullnessUnits > 0) {
-                int n = shown.size();
-                int base = Math.max(1, fullnessUnits / n);
-                int remainder = Math.max(0, fullnessUnits - base * n);
-                for (int i = 0; i < n; i++) {
-                    ItemStack s = shown.get(i);
-                    int add = base + (i < remainder ? 1 : 0);
-                    s.setAmount(Math.min(add, Math.max(1, s.getMaxStackSize()))); // cap by item max
+            // Compute fullness units (0..64), but never allow 64 unless usedSlots == capacity
+            int rawUnits = capacity <= 0 ? 0 : (int) Math.round(64.0 * usedSlots / capacity);
+            int fullnessUnits = (usedSlots >= capacity) ? 64 : Math.min(63, Math.max(0, rawUnits));
+
+            // Build visible preview using actual items only (no filler). Distribute units across up to 8 items.
+            List<ItemStack> shown = new ArrayList<>();
+            if (fullnessUnits > 0 && !nonEmpty.isEmpty()) {
+                int maxVisible = Math.min(8, nonEmpty.size());
+                // If we have fewer units than visible slots, only show that many items with amount 1
+                int visibleCount = Math.min(maxVisible, fullnessUnits);
+                int remaining = fullnessUnits;
+
+                for (int i = 0; i < visibleCount; i++) {
+                    ItemStack sample = nonEmpty.get(i).clone();
+                    int max = Math.max(1, sample.getMaxStackSize());
+
+                    // Ensure each remaining slot can receive at least 1
+                    int slotsLeft = visibleCount - i - 1;
+                    int minNeededForRemaining = slotsLeft; // 1 per remaining slot
+                    int give = Math.min(max, Math.max(1, remaining - minNeededForRemaining));
+
+                    sample.setAmount(give);
+                    shown.add(sample);
+                    remaining -= give;
                 }
-            } else {
-                // No preview items or empty backpack -> keep items empty for an empty bar
-                shown.clear();
+
+                // If any units remain (unlikely with typical max 64), try to top up existing items without exceeding max
+                if (remaining > 0) {
+                    for (int i = 0; i < shown.size() && remaining > 0; i++) {
+                        ItemStack s = shown.get(i);
+                        int max = Math.max(1, s.getMaxStackSize());
+                        int canAdd = Math.max(0, max - s.getAmount());
+                        if (canAdd > 0) {
+                            int add = Math.min(canAdd, remaining);
+                            s.setAmount(s.getAmount() + add);
+                            remaining -= add;
+                        }
+                    }
+                }
             }
 
             bm.setItems(shown);
             meta = bm;
         } else if (stack.getType() == Material.BUNDLE) {
-            // Fallback: if we couldn't set items, hide specifics to avoid “Empty”
+            // Fallback when not able to set items
             meta.addItemFlags(ItemFlag.HIDE_ITEM_SPECIFICS, ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
         }
 

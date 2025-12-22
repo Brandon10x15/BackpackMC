@@ -1,65 +1,46 @@
-## Links:
-- Readme: [README.md](./README.md)
-- Installation: [Installation.md](./Installation.md)
-- Configuration: [Configuration.md](./Configuration.md)
-- Commands: [Commands.md](./Commands.md)
-- Permissions: [Permissions.md](./Permissions.md)
-- Storage Backends: [Storage.md](./Storage.md)
-- Shortcut Item: [Shortcut-Item.md](./Shortcut-Item.md)
-- Migration Guide: [Migration.md](./Migration.md)
-- Troubleshooting: [Troubleshooting.md](./Troubleshooting.md)
-- API (developers): [API.md](./API.md)
-- Events (developers): [Events.md](./Events.md)
-- FAQ: [FAQ.md](./FAQ.md)
+# Configuration.md
 
-# Configuration
+[README](README.md) | [Installation](Installation.md) | [Configuration](Configuration.md) | [Commands](Commands.md) | [Permissions](Permissions.md) | [Shortcut-Item](Shortcut-Item.md) | [Storage](Storage.md) | [Migration](Migration.md) | [API](API.md) | [Events](Events.md) | [FAQ](FAQ.md) | [Troubleshooting](Troubleshooting.md)
 
-The default config.yml keys and behavior:
+## File: plugins/BackpackMC/config.yml
 
-## language
-- Set language file name, e.g., en_US or de_DE.
-- Corresponding file must exist under messages/<lang>.yml.
+### language
+- Sets the messages file: en_US or de_DE.
 
-## storage
-- type: YAML | SQLITE | MYSQL
+### storage
+- type: YAML, SQLITE, or MYSQL
 - mysql:
-  - host, port, database, user, password, useSSL
+    - host, port, database, user, password, useSSL
 - sqlite:
-  - file: data.db
+    - file (relative to plugin data folder)
 - yaml:
-  - folder: data
+    - folder (relative to plugin data folder)
 
-## settings
-- command-cooldown-seconds: cooldown for /backpack self-use
-- worlds-blacklist: worlds where backpacks cannot be used (unless bypass permission)
-- restrict-gamemodes: gamemodes disallowed for opening backpacks (unless bypass)
-- auto-pickup-enabled: enables full-inventory pickup into backpacks for players with backpack.fullpickup
-- item-filter.blocked: Materials that cannot be stored in backpacks (e.g., BEDROCK, COMMAND_BLOCK)
-- keep-on-death-default:
-  - true: keep contents on death unless overridden
-  - false: clear on death unless player has backpack.keepOnDeath
-- drop-on-death-if-not-keeping:
-  - true: drops backpack contents on the ground if not keeping
-  - false: clears without dropping
-- auto-sort.default-mode: OFF | LIGHT | AGGRESSIVE (initial per-player preference)
+### settings
+- command-cooldown-seconds: cooldown for /backpack usage
+- worlds-blacklist: list of world names where backpacks are disabled
+- restrict-gamemodes: gamemodes where backpacks are disabled (e.g., SPECTATOR)
+- auto-pickup-enabled: if true, auto-pickup to backpack when inventory is full and player has permission
+- item-filter.blocked: materials that cannot be stored in backpacks (e.g., BEDROCK, COMMAND_BLOCK)
+- keep-on-death-default: if true, players keep backpack on death unless overridden
+- drop-on-death-if-not-keeping: if true, contents drop on death when not keeping
+- clear-inventory.confirmation-default-enabled: default confirmation requirement for /clearinventory
+- auto-sort.default-mode: OFF, LIGHT, or AGGRESSIVE
 - updater:
-  - enabled: enables update checks
-  - check-url: returns latest version string
-  - download-url: info link for updates
+    - enabled: enable update checks
+    - check-url: URL returning latest version string
+    - download-url: where to download the latest jar
 
-## shortcut-item
-- enabled: toggles shortcut item feature
-- give-on-join: give item automatically to eligible players
-- force-slot: -1 for no force; 0–8 to enforce hotbar slot
-- material: default BUNDLE; may be set to another Material
-- name: display name (supports color codes with &)
-- lore: lines below name (supports color codes)
-- droppable: allow dropping shortcut item (Q); default false
+### shortcut-item
+- enabled: enable the shortcut item feature
+- give-on-join: give shortcut on player join if they have use permission
+- force-slot: -1 for no force, 0–8 for a specific hotbar slot
+- material: defaults to BUNDLE
+- name: display name with color codes (&)
+- lore: list of lore lines with color codes
+- droppable: if false, prevents dropping the shortcut item
 
-## Messages
-- Customize messages/en_US.yml or messages/de_DE.yml.
-- Switch language via config.yml: language: de_DE (for example).
-- Use color codes with &.
-
-## Reloading
-- Use /backpack reload to reload config and messages.
+### Tips
+- Changing storage.type does not automatically migrate data. Use /backpack migrate (Migration.md).
+- If you block materials, players will get a message when attempting to store them.
+- World and gamemode restrictions respect admin bypass permissions.

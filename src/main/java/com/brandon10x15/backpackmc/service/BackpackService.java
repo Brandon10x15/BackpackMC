@@ -47,9 +47,9 @@ public class BackpackService implements BackpackAPI {
     public int resolveBackpackSize(Player player) {
         int rows = 0;
         for (int i = 1; i <= 6; i++) {
-            if (player.hasPermission("backpack.size." + i)) rows = i;
+            if (player.hasPermission("backpackmc.backpack.size." + i)) rows = i;
         }
-        if (rows == 0 && player.hasPermission("backpack.use")) rows = 1;
+        if (rows == 0 && player.hasPermission("backpackmc.backpack.use")) rows = 1;
         return Math.max(0, Math.min(6, rows));
     }
 
@@ -81,20 +81,19 @@ public class BackpackService implements BackpackAPI {
         UUID vid = viewer.getUniqueId();
         UUID currentlyOpen = openViews.get(vid);
 
-        // Always snapshot and save any existing open backpack view for this viewer before opening/re-focusing
-        if (currentlyOpen != null) {
-            snapshotOpenView(vid);
-        }
-
-        // If the viewer already has this same backpack open, just refocus the existing view.
-        // This prevents the old InventoryCloseEvent from missing the save due to a new view replacing it.
+        // If already viewing this backpack, do nothing to prevent re-opening while open
         if (currentlyOpen != null && currentlyOpen.equals(target)) {
             Backpack existing = getOrCreateBackpack(target);
             Inventory existingView = existing.getView();
-            if (existingView != null) {
-                viewer.openInventory(existingView);
+            if (existingView != null && viewer.getOpenInventory() != null
+                    && viewer.getOpenInventory().getTopInventory() == existingView) {
                 return;
             }
+        }
+
+        // Snapshot any existing open backpack view before opening a new one
+        if (currentlyOpen != null) {
+            snapshotOpenView(vid);
         }
 
         Backpack bp = getOrCreateBackpack(target);
@@ -117,7 +116,7 @@ public class BackpackService implements BackpackAPI {
     }
 
     public boolean canUseInWorld(Player p) {
-        if (p.hasPermission("backpack.ignoreWorldBlacklist")) return true;
+        if (p.hasPermission("backpackmc.backpack.ignoreWorldBlacklist")) return true;
         if (config.worldBlacklist().contains(p.getWorld().getName())) {
             p.sendMessage(lang.color(lang.msg("disabled-world")));
             return false;
@@ -126,7 +125,7 @@ public class BackpackService implements BackpackAPI {
     }
 
     public boolean canUseInGameMode(Player p) {
-        if (p.hasPermission("backpack.ignoreGameMode")) return true;
+        if (p.hasPermission("backpackmc.backpack.ignoreGameMode")) return true;
         if (config.restrictedGMs().contains(p.getGameMode())) {
             p.sendMessage(lang.color(lang.msg("disabled-gamemode")));
             return false;
@@ -188,14 +187,20 @@ public class BackpackService implements BackpackAPI {
             });
         }
 
-        bp.getContents().replaceAll(it -> null);
-        for (int i = 0; i < Math.min(bp.getContents().size(), items.size()); i++) {
-            bp.getContents().set(i, items.get(i));
+        int capacity = bp.getRows() * 9;
+        List<ItemStack> arranged = new ArrayList<>();
+        for (int i = 0; i < Math.min(capacity, items.size()); i++) {
+            arranged.add(items.get(i));
         }
-        storage.saveAsync(uuid, bp.getContents());
+        while (arranged.size() < capacity) arranged.add(null);
+
+        List<ItemStack> finalContents = sanitizeContents(arranged, capacity);
+
+        bp.setContents(finalContents);
+        storage.saveAsync(uuid, finalContents);
         if (bp.getView() != null) {
             for (int i = 0; i < bp.getView().getSize(); i++) {
-                bp.getView().setItem(i, bp.getContents().get(i));
+                bp.getView().setItem(i, finalContents.get(i));
             }
         }
     }
@@ -240,12 +245,19 @@ public class BackpackService implements BackpackAPI {
         Backpack bp = getOrCreateBackpack(target);
         Inventory v = bp.getView();
         if (v != null) {
+            int capacity = bp.getRows() * 9;
             List<ItemStack> list = new ArrayList<>();
-            for (int i = 0; i < bp.getRows() * 9; i++) {
+            for (int i = 0; i < capacity; i++) {
                 list.add(v.getItem(i));
             }
-            bp.setContents(list);
-            storage.saveAsync(target, list);
+            List<ItemStack> sanitized = sanitizeContents(list, capacity);
+            bp.setContents(sanitized);
+            storage.saveAsync(target, sanitized);
+
+            // Reflect sanitization to the live GUI to prevent visual over-stacks
+            for (int i = 0; i < capacity; i++) {
+                v.setItem(i, sanitized.get(i));
+            }
         }
     }
 
@@ -257,12 +269,14 @@ public class BackpackService implements BackpackAPI {
         if (target == null) return; // Not a backpack GUI
         Backpack bp = getOrCreateBackpack(target);
         if (bp.getView() == inv) {
+            int capacity = bp.getRows() * 9;
             List<ItemStack> list = new ArrayList<>();
-            for (int i = 0; i < bp.getRows() * 9; i++) {
+            for (int i = 0; i < capacity; i++) {
                 list.add(inv.getItem(i));
             }
-            bp.setContents(list);
-            storage.saveAsync(target, list);
+            List<ItemStack> sanitized = sanitizeContents(list, capacity);
+            bp.setContents(sanitized);
+            storage.saveAsync(target, sanitized);
             bp.setView(null);
         }
     }
@@ -351,6 +365,8 @@ public class BackpackService implements BackpackAPI {
                 finalContents.add(i < arranged.size() ? arranged.get(i) : null);
             }
 
+            finalContents = sanitizeContents(finalContents, capacity);
+
             bp.setContents(finalContents);
             storage.saveAsync(uuid, finalContents);
 
@@ -361,11 +377,12 @@ public class BackpackService implements BackpackAPI {
             }
         } else {
             // No changes; ensure current contents are saved if we added nothing
-            bp.setContents(contents);
-            storage.saveAsync(uuid, contents);
+            List<ItemStack> finalContents = sanitizeContents(contents, capacity);
+            bp.setContents(finalContents);
+            storage.saveAsync(uuid, finalContents);
             if (bp.getView() != null) {
                 for (int i = 0; i < bp.getView().getSize(); i++) {
-                    bp.getView().setItem(i, contents.get(i));
+                    bp.getView().setItem(i, finalContents.get(i));
                 }
             }
         }
@@ -430,5 +447,55 @@ public class BackpackService implements BackpackAPI {
         if (n.contains("REDSTONE") || n.contains("COMPARATOR") || n.contains("REPEATER") || n.contains("PISTON") || n.contains("OBSERVER")
                 || n.contains("HOPPER") || n.contains("DROPPER") || n.contains("DISPENSER") || n.contains("LEVER") || n.contains("BUTTON")) return 8;
         return 9;
+    }
+
+    /**
+     * Sanitize a contents list:
+     * - size exactly equals capacity
+     * - all stacks have amount within [1, maxStackSize]
+     * - split any over-sized stacks into valid stacks (extras truncated if capacity is exceeded)
+     * - null/AIR entries remain null
+     */
+    private List<ItemStack> sanitizeContents(List<ItemStack> items, int capacity) {
+        List<ItemStack> sanitized = new ArrayList<>();
+
+        for (ItemStack it : items) {
+            if (it == null || it.getType() == Material.AIR) {
+                sanitized.add(null);
+                continue;
+            }
+            ItemStack base = it.clone();
+            int max = Math.max(1, base.getMaxStackSize());
+            int amt = base.getAmount();
+
+            if (amt <= 0) {
+                sanitized.add(null);
+                continue;
+            }
+
+            // First stack
+            int put = Math.min(amt, max);
+            base.setAmount(put);
+            sanitized.add(base);
+            amt -= put;
+
+            // Additional stacks
+            while (amt > 0 && sanitized.size() < capacity) {
+                ItemStack extra = base.clone();
+                int give = Math.min(max, amt);
+                extra.setAmount(give);
+                sanitized.add(extra);
+                amt -= give;
+            }
+        }
+
+        // Ensure exact capacity
+        if (sanitized.size() > capacity) {
+            sanitized = new ArrayList<>(sanitized.subList(0, capacity));
+        } else {
+            while (sanitized.size() < capacity) sanitized.add(null);
+        }
+
+        return sanitized;
     }
 }

@@ -28,7 +28,7 @@ public class InventoryListener implements Listener {
     public void onPickup(EntityPickupItemEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
         if (!config.autoPickupEnabled()) return;
-        if (!p.hasPermission("backpack.fullpickup")) return;
+        if (!p.hasPermission("backpackmc.backpack.fullpickup")) return;
 
         Item itemEntity = e.getItem();
         ItemStack stack = itemEntity.getItemStack();

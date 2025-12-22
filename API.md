@@ -1,57 +1,42 @@
-## Links:
-- Readme: [README.md](./README.md)
-- Installation: [Installation.md](./Installation.md)
-- Configuration: [Configuration.md](./Configuration.md)
-- Commands: [Commands.md](./Commands.md)
-- Permissions: [Permissions.md](./Permissions.md)
-- Storage Backends: [Storage.md](./Storage.md)
-- Shortcut Item: [Shortcut-Item.md](./Shortcut-Item.md)
-- Migration Guide: [Migration.md](./Migration.md)
-- Troubleshooting: [Troubleshooting.md](./Troubleshooting.md)
-- API (developers): [API.md](./API.md)
-- Events (developers): [Events.md](./Events.md)
-- FAQ: [FAQ.md](./FAQ.md)
+# API.md
 
-# Developer API
-
-BackpackMC registers a service implementing BackpackAPI.
+[README](README.md) | [Installation](Installation.md) | [Configuration](Configuration.md) | [Commands](Commands.md) | [Permissions](Permissions.md) | [Shortcut-Item](Shortcut-Item.md) | [Storage](Storage.md) | [Migration](Migration.md) | [API](API.md) | [Events](Events.md) | [FAQ](FAQ.md) | [Troubleshooting](Troubleshooting.md)
 
 ## Getting the API
-```java
-import com.brandon10x15.backpackmc.api.BackpackAPI;
-import org.bukkit.Bukkit;
 
-BackpackAPI api = Bukkit.getServicesManager().load(BackpackAPI.class);
+- BackpackAPI is registered in the Bukkit ServicesManager.
+- Example:
+
+```java
+BackpackAPI api = org.bukkit.Bukkit.getServicesManager()
+    .load(com.brandon10x15.backpackmc.api.BackpackAPI.class);
 ```
-##Methods
+
+## Methods
 - int resolveBackpackSize(Player player)
-  - Returns rows (1–6) based on permission nodes; if player has backpack.use but no size nodes, returns 1.
+  - Returns rows granted to the player (1–6)
 - Backpack getOrCreateBackpack(UUID uuid)
-  - Returns cached or newly loaded backpack object.
+  - Returns cached or newly created backpack for the player
 - Optional<Backpack> getBackpack(UUID uuid)
-  - Returns present if already in cache.
+  - Returns cached backpack if present
 - void openBackpack(Player viewer, UUID target, boolean editable)
-  - Opens the GUI for target’s backpack to the viewer. Editable indicates intended mode; listeners can act on it.
+  - Opens the GUI for viewer; editable indicates intent (events can react)
 - void cleanBackpack(UUID uuid)
-  - Clears contents and reflects to open view; fires BackpackCleanEvent.
+  - Clears contents and persists
 - void sortBackpack(UUID uuid)
-  - Sorts per the player’s auto-sort preference.
+  - Sorts contents based on the owner’s auto-sort preference
 - void flush(UUID uuid)
-  - Saves immediately to storage.
-##Backpack model
-- UUID owner
-- int rows
-- List<ItemStack> contents
-- Inventory view (transient, when open)
-##Save Semantics
-- Snapshot on inventory interactions and after close
-- Async saves on changes
-- OnDisable flushAll
-##Example: Open and sort someone’s backpack
-```java
-Player admin = ...;
-UUID target = ...;
+  - Saves synchronously
 
-api.openBackpack(admin, target, true);
-api.sortBackpack(target);
-```
+## Model
+
+- Backpack
+  - owner: UUID
+  - rows: int
+  - contents: List<ItemStack>
+  - view: transient Inventory when open
+
+## Notes
+
+- Contents are sanitized during snapshot and storage to ensure valid stack sizes and prevent duplication.
+- Opening or interacting with the backpack is restricted by config world/gamemode rules unless bypass permissions are present.
