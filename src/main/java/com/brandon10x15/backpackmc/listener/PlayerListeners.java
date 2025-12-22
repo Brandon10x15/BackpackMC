@@ -134,15 +134,35 @@ public class PlayerListeners implements Listener {
         InventoryView view = e.getView();
         boolean noContainerOpen = view.getTopInventory().getType() == InventoryType.CRAFTING;
 
+        // Hard-lock: while the backpack GUI is open, do not allow picking up or moving the shortcut at all.
+        boolean backpackOpen = service.isViewerViewingBackpack(p.getUniqueId(), view.getTopInventory());
+        if (backpackOpen) {
+            if (currentIsShortcut || cursorIsShortcut) {
+                e.setCancelled(true);
+                return;
+            }
+            // Also block number-key swaps if the hotbar item is the shortcut
+            if (e.getClick() == ClickType.NUMBER_KEY) {
+                int hotbar = e.getHotbarButton();
+                if (hotbar >= 0) {
+                    ItemStack hotbarItem = p.getInventory().getItem(hotbar);
+                    if (ItemUtils.hasShortcutTag(hotbarItem, shortcutKey)) {
+                        e.setCancelled(true);
+                        return;
+                    }
+                }
+            }
+        }
+
         // Additional anti-duplication: block collect-to-cursor/double-click inside backpack view
-        if (service.isViewerViewingBackpack(p.getUniqueId(), view.getTopInventory())) {
+        if (backpackOpen) {
             if (e.getAction() == InventoryAction.COLLECT_TO_CURSOR || e.getClick() == ClickType.DOUBLE_CLICK) {
                 e.setCancelled(true);
                 return;
             }
         }
 
-        // Store items when dropping onto the backpack shortcut in player inventory
+        // Store items when dropping onto the backpack shortcut in player's inventory
         if (currentIsShortcut
                 && e.getClickedInventory() != null
                 && (e.getClickedInventory().equals(p.getInventory())
@@ -229,6 +249,8 @@ public class PlayerListeners implements Listener {
         }
     }
 
+    // Dragging is fully disabled while a backpack is open to prevent duplication via right-click drag distribution.
+    // Players must use discrete clicks for any item movement in backpack/top inventory or player hotbar/bottom inventory.
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDrag(InventoryDragEvent e) {
         if (!config.shortcutEnabled()) return;
@@ -249,57 +271,28 @@ public class PlayerListeners implements Listener {
             return;
         }
 
-        // Anti-duplication: prevent right-click drag spreading across backpack top inventory
+        // If a backpack GUI is open, cancel ALL drag events (both into the backpack and bottom inventory).
+        // This enforces click-per-action and prevents multi-slot distribution duplication.
         if (service.isViewerViewingBackpack(p.getUniqueId(), view.getTopInventory())) {
-            boolean affectsTop = e.getRawSlots().stream().anyMatch(slot -> slot < topSize);
-            if (affectsTop && e.getType() == DragType.SINGLE) {
-                // Right-click drag (place-one per slot) — cancel to prevent duping
-                e.setCancelled(true);
-                return;
-            }
+            e.setCancelled(true);
+            return;
         }
 
-        // Store items when drag targets include the backpack shortcut slot in the player's inventory
-        if (cursor != null && cursor.getType() != Material.AIR) {
-            boolean includesShortcutSlot = e.getRawSlots().stream().anyMatch(slot -> {
-                if (slot >= topSize) {
-                    int playerSlot = slot - topSize;
-                    ItemStack target = p.getInventory().getItem(playerSlot);
-                    return ItemUtils.hasShortcutTag(target, shortcutKey);
-                }
-                return false;
-            });
-
-            if (includesShortcutSlot) {
-                e.setCancelled(true);
-                if (!p.hasPermission("backpackmc.backpack.use")) {
-                    p.sendMessage(lang.color(lang.msg("no-permission")));
-                    return;
-                }
-                if (!p.hasPermission("backpackmc.backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
-                if (!p.hasPermission("backpackmc.backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
-
-                if (config.blockedMaterials().contains(cursor.getType())) {
-                    String itemName = cursor.hasItemMeta() && cursor.getItemMeta().hasDisplayName()
-                            ? cursor.getItemMeta().getDisplayName()
-                            : cursor.getType().name();
-                    p.sendMessage(lang.color(lang.msg("cannot-store-item").replace("{item}", itemName)));
-                    return;
-                }
-
-                int left = service.addToBackpack(p.getUniqueId(), cursor);
-                if (left <= 0) {
-                    p.setItemOnCursor(null);
-                } else if (left < cursor.getAmount()) {
-                    ItemStack newLeft = cursor.clone();
-                    newLeft.setAmount(left);
-                    p.setItemOnCursor(newLeft);
-                }
-                p.sendActionBar(lang.color(lang.msg("pickup-to-backpack")));
-                ensureUniqueShortcut(p);
+        // Store-by-drag onto the shortcut is no longer allowed; require explicit clicks.
+        // If any target slot is the shortcut in the player's inventory, just cancel.
+        boolean includesShortcutSlot = e.getRawSlots().stream().anyMatch(slot -> {
+            if (slot >= topSize) {
+                int playerSlot = slot - topSize;
+                ItemStack target = p.getInventory().getItem(playerSlot);
+                return ItemUtils.hasShortcutTag(target, shortcutKey);
             }
+            return false;
+        });
+        if (includesShortcutSlot) {
+            e.setCancelled(true);
+            return;
         }
-        // Else allow dragging within player inventory
+        // Else allow dragging within other inventories when backpack is not open.
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
