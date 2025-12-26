@@ -119,6 +119,28 @@ public class BackpackMCPlugin extends JavaPlugin {
         this.updateChecker = new UpdateChecker(this, configManager);
         if (configManager.isUpdaterEnabled()) {
             updateChecker.checkGitHubAsync();
+
+            // Auto-download latest release to update folder if configured
+            if (configManager.updaterAutoDownload()) {
+                getServer().getScheduler().runTaskAsynchronously(this, () -> {
+                    var res = service.checkForUpdate();
+                    if (res != null && res.updateAvailable()) {
+                        var dl = service.downloadLatestRelease();
+                        if (dl != null && dl.success()) {
+                            getLogger().info("Downloaded BackpackMC update " + res.latest() + " to the update folder. It will be applied on next restart.");
+                            Bukkit.getOnlinePlayers().stream()
+                                    .filter(p -> p.hasPermission("backpackmc.backpack.update"))
+                                    .forEach(p -> {
+                                        p.sendMessage(lang.color(lang.msg("update-downloaded").replace("{latest}", res.latest())));
+                                        p.sendMessage(lang.color(lang.msg("update-restart-required")));
+                                    });
+                        } else {
+                            String reason = (dl == null || dl.errorMessage() == null || dl.errorMessage().isBlank()) ? "unknown error" : dl.errorMessage();
+                            getLogger().warning("Failed to auto-download BackpackMC update: " + reason);
+                        }
+                    }
+                });
+            }
         }
 
         getLogger().info("BackpackMC enabled.");

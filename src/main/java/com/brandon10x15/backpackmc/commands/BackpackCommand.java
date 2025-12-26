@@ -155,6 +155,34 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(lang.color(lang.msg("update-disabled")));
                     return true;
                 }
+
+                // Subcommand: /backpack update download
+                if (args.length >= 2 && args[1].equalsIgnoreCase("download")) {
+                    sender.sendMessage(lang.color(lang.msg("update-downloading")));
+                    plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+                        var result = plugin.service().checkForUpdate();
+                        if (result != null && result.updateAvailable()) {
+                            var dl = plugin.service().downloadLatestRelease();
+                            if (dl.success()) {
+                                sender.sendMessage(lang.color(
+                                        lang.msg("update-downloaded")
+                                                .replace("{latest}", result.latest())
+                                ));
+                                sender.sendMessage(lang.color(lang.msg("update-restart-required")));
+                            } else {
+                                sender.sendMessage(lang.color(
+                                        lang.msg("update-download-failed")
+                                                .replace("{reason}", dl.errorMessage() == null ? "unknown error" : dl.errorMessage())
+                                ));
+                            }
+                        } else {
+                            sender.sendMessage(lang.color(lang.msg("update-none")));
+                        }
+                    });
+                    return true;
+                }
+
+                // Default: /backpack update (check only)
                 sender.sendMessage(lang.color(lang.msg("update-checking")));
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
                     var result = plugin.service().checkForUpdate();
@@ -162,6 +190,9 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                         sender.sendMessage(lang.color(lang.msg("updated-available")
                                 .replace("{current}", result.current())
                                 .replace("{latest}", result.latest())));
+                        sender.sendMessage(lang.color(lang.msg("update-how-to-download")));
+                    } else {
+                        sender.sendMessage(lang.color(lang.msg("update-none")));
                     }
                 });
                 return true;
@@ -262,6 +293,9 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("autosort")) {
             return Arrays.asList("off", "light", "aggressive");
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("update")) {
+            return Arrays.asList("download");
         }
         return Collections.emptyList();
     }

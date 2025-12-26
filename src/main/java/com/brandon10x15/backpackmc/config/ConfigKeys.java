@@ -28,6 +28,9 @@ public final class ConfigKeys {
     public static final String UPDATER_GITHUB_REPO = "settings.updater.github-repo";
     public static final String UPDATER_INCLUDE_PRERELEASES = "settings.updater.include-prereleases";
 
+    // NEW: auto-download toggle
+    public static final String UPDATER_AUTO_DOWNLOAD = "settings.updater.auto-download";
+
     // Legacy (optional fallback) updater keys
     public static final String UPDATER_CHECK_URL = "settings.updater.check-url";
     public static final String UPDATER_DOWNLOAD_URL = "settings.updater.download-url";

@@ -19,6 +19,16 @@ cannot-store-item: "&cYou cannot store {item} in your backpack."
 not-online: "&cPlayer is not online."
 unknown-player: "&cUnknown player."
 autosort-set: "&aAuto-sort mode set to &e{mode}&a."
+pickup-to-backpack: "&aSent items to your backpack."
+
+# New updater messages
+update-downloading: "&7Downloading latest release..."
+update-downloaded: "&aDownloaded update {latest} to the update folder."
+update-restart-required: "&eRestart the server to apply the update."
+update-download-failed: "&cFailed to download update: {reason}"
+update-none: "&aYou're already running the latest version."
+update-how-to-download: "&7Run &e/backpack update download &7to download the latest release."
+
 usage:
   help-header: "&eBackpackMC Commands:"
   help-lines:
@@ -30,5 +40,5 @@ usage:
     - "&e/backpack <player> &7- View other's backpack"
     - "&e/backpack reload &7- Reload config"
     - "&e/backpack update &7- Check for updates"
+    - "&e/backpack update download &7- Download latest update (applies on restart)"
     - "&e/backpack migrate <YAML|SQLITE|MYSQL> &7- Migrate storage"
-pickup-to-backpack: "&aSent items to your backpack."

@@ -41,9 +41,12 @@ settings:
     # If include-prereleases is true, it will consider prereleases; otherwise it uses the latest stable release.
     github-repo: Brandon10x15/BackpackMC
     include-prereleases: false
+    # Automatically download the latest release to the server's update folder when an update is found.
+    # The update will be applied on the next restart.
+    auto-download: true
     # Optional fallback text endpoint (e.g., version.txt) if GitHub API is unavailable.
     check-url: https://raw.githubusercontent.com/example/BackpackMC/main/version.txt
-    # Optional fallback download URL shown in logs if no asset URL is discovered automatically.
+    # Optional fallback download URL shown/used if no asset URL is discovered automatically.
     download-url: https://github.com/example/BackpackMC/releases/latest/download/BackpackMC.jar
 
 shortcut-item:

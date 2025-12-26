@@ -19,6 +19,16 @@ cannot-store-item: "&cDu kannst {item} nicht im Rucksack lagern."
 not-online: "&cSpieler ist nicht online."
 unknown-player: "&cUnbekannter Spieler."
 autosort-set: "&aAuto-Sortiermodus auf &e{mode}&a gesetzt."
+pickup-to-backpack: "&aGegenstände in deinen Rucksack gesendet."
+
+# Neue Updater-Nachrichten
+update-downloading: "&7Lade die neueste Version herunter..."
+update-downloaded: "&aUpdate {latest} in den Update-Ordner heruntergeladen."
+update-restart-required: "&eStarte den Server neu, um das Update anzuwenden."
+update-download-failed: "&cUpdate-Download fehlgeschlagen: {reason}"
+update-none: "&aDu verwendest bereits die neueste Version."
+update-how-to-download: "&7Führe &e/backpack update download &7aus, um die neueste Version herunterzuladen."
+
 usage:
   help-header: "&eBackpackMC Befehle:"
   help-lines:
@@ -30,5 +40,5 @@ usage:
     - "&e/backpack <spieler> &7- Zeige den Rucksack eines Spielers"
     - "&e/backpack reload &7- Konfiguration neu laden"
     - "&e/backpack update &7- Nach Updates suchen"
+    - "&e/backpack update download &7- Neueste Version herunterladen (wird beim Neustart angewendet)"
     - "&e/backpack migrate <YAML|SQLITE|MYSQL> &7- Speicher migrieren"
-pickup-to-backpack: "&aGegenstände in deinen Rucksack gesendet."

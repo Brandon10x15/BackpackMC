@@ -17,6 +17,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,6 +43,7 @@ public class BackpackService implements BackpackAPI {
     private final Map<UUID, SortMode> autoSortPrefs = new ConcurrentHashMap<>();
 
     public record UpdateResult(boolean updateAvailable, String current, String latest) {}
+    public record DownloadResult(boolean success, String latestTag, String errorMessage) {}
 
     public BackpackService(BackpackMCPlugin plugin, Storage storage, ConfigManager config, Lang lang) {
         this.plugin = plugin;
@@ -421,6 +430,71 @@ public class BackpackService implements BackpackAPI {
 
         boolean update = latest != null && !latest.isBlank() && !latest.equalsIgnoreCase(current);
         return new UpdateResult(update, current, latest);
+    }
+
+    // Download latest release JAR to the server's update folder (applies on next restart)
+    public DownloadResult downloadLatestRelease() {
+        try {
+            if (!config.isUpdaterEnabled()) {
+                return new DownloadResult(false, null, "Updater disabled");
+            }
+
+            String repo = config.githubRepo();
+            boolean include = config.includePrereleases();
+            UpdateChecker.GitHubReleaseInfo info = UpdateChecker.fetchGitHubLatest(repo, include);
+            if (info == null) {
+                return new DownloadResult(false, null, "Failed to fetch release info");
+            }
+
+            String latestTag = normalizeVersion(info.tag);
+            String assetUrl = (info.assetUrl != null && !info.assetUrl.isEmpty()) ? info.assetUrl : config.updaterDownloadUrl();
+            if (assetUrl == null || assetUrl.isBlank()) {
+                return new DownloadResult(false, latestTag, "No downloadable asset URL found");
+            }
+
+            File updateDir = plugin.getServer().getUpdateFolderFile();
+            if (updateDir == null) {
+                // Fallback to <server>/plugins/update
+                File pluginsDir = plugin.getDataFolder().getParentFile();
+                updateDir = new File(pluginsDir, "update");
+            }
+            if (!updateDir.exists()) updateDir.mkdirs();
+
+            String outName = plugin.getDescription().getName() + ".jar";
+            File outFile = new File(updateDir, outName);
+
+            HttpClient client = HttpClient.newBuilder()
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .connectTimeout(Duration.ofSeconds(8))
+                    .build();
+
+            HttpRequest req = HttpRequest.newBuilder(URI.create(assetUrl))
+                    .timeout(Duration.ofSeconds(60))
+                    .header("Accept", "application/octet-stream")
+                    .header("User-Agent", "BackpackMC-Updater")
+                    .GET()
+                    .build();
+
+            HttpResponse<InputStream> resp = client.send(req, HttpResponse.BodyHandlers.ofInputStream());
+            if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
+                return new DownloadResult(false, latestTag, "HTTP " + resp.statusCode());
+            }
+
+            try (InputStream in = resp.body(); FileOutputStream out = new FileOutputStream(outFile)) {
+                in.transferTo(out);
+            }
+
+            return new DownloadResult(true, latestTag, null);
+        } catch (Exception e) {
+            return new DownloadResult(false, null, e.getMessage());
+        }
+    }
+
+    // Convenience method to download only if update is available
+    public DownloadResult downloadLatestReleaseIfAvailable() {
+        UpdateResult res = checkForUpdate();
+        if (res == null || !res.updateAvailable()) return null;
+        return downloadLatestRelease();
     }
 
     private static String normalizeVersion(String v) {

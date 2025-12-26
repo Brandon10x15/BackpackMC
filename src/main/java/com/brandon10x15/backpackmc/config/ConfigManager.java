@@ -89,6 +89,11 @@ public class ConfigManager {
         return plugin.getConfig().getBoolean(ConfigKeys.UPDATER_INCLUDE_PRERELEASES, false);
     }
 
+    // NEW: auto-download toggle
+    public boolean updaterAutoDownload() {
+        return plugin.getConfig().getBoolean(ConfigKeys.UPDATER_AUTO_DOWNLOAD, false);
+    }
+
     // Legacy (optional fallback) — kept for compatibility though not used by the new checker
     public String updaterCheckUrl() {
         return plugin.getConfig().getString(ConfigKeys.UPDATER_CHECK_URL, "");
