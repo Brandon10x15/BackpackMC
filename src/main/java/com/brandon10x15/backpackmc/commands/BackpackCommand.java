@@ -124,7 +124,6 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                         return true;
                     }
                 } else {
-                    // cycle current -> next
                     BackpackService.SortMode cur = service.getAutoSortMode(p.getUniqueId());
                     mode = switch (cur) {
                         case OFF -> BackpackService.SortMode.LIGHT;
@@ -191,7 +190,6 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             default -> {
-                // /backpack <player>
                 if (!sender.hasPermission("backpackmc.backpack.others")) {
                     sender.sendMessage(lang.color(lang.msg("no-permission")));
                     return true;

@@ -127,7 +127,10 @@ public class BackpackMCPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         try {
-            if (service != null) service.flushAll();
+            if (service != null) {
+                service.closeAllOpenViewsAndSave();
+                service.flushAll();
+            }
             if (storage != null) storage.close();
         } catch (Exception e) {
             getLogger().warning("Error during shutdown: " + e.getMessage());

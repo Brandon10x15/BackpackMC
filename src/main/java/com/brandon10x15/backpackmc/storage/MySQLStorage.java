@@ -14,7 +14,11 @@ public class MySQLStorage implements Storage {
 
     private final BackpackMCPlugin plugin;
     private final ConfigManager config;
-    private Connection conn;
+
+    // Open a fresh connection per operation (robust against wait_timeout; no shared Connection)
+    private String jdbcUrl;
+    private String user;
+    private String pass;
 
     public MySQLStorage(BackpackMCPlugin plugin, ConfigManager config) {
         this.plugin = plugin;
@@ -23,25 +27,37 @@ public class MySQLStorage implements Storage {
 
     @Override
     public void init() {
-        try {
-            String url = "jdbc:mysql://" + config.mysqlHost() + ":" + config.mysqlPort() + "/" + config.mysqlDb()
-                    + "?useSSL=" + config.mysqlSSL() + "&allowPublicKeyRetrieval=true&serverTimezone=UTC";
-            conn = DriverManager.getConnection(url, config.mysqlUser(), config.mysqlPass());
-            try (Statement st = conn.createStatement()) {
-                st.executeUpdate("CREATE TABLE IF NOT EXISTS backpacks (uuid CHAR(36) PRIMARY KEY, contents MEDIUMTEXT)");
-            }
+        this.jdbcUrl = "jdbc:mysql://" + config.mysqlHost() + ":" + config.mysqlPort() + "/" + config.mysqlDb()
+                + "?useSSL=" + config.mysqlSSL()
+                + "&allowPublicKeyRetrieval=true"
+                + "&serverTimezone=UTC"
+                + "&tcpKeepAlive=true"
+                + "&connectTimeout=5000"
+                + "&socketTimeout=30000";
+        this.user = config.mysqlUser();
+        this.pass = config.mysqlPass();
+
+        try (Connection c = open();
+             Statement st = c.createStatement()) {
+            st.executeUpdate("CREATE TABLE IF NOT EXISTS backpacks (uuid CHAR(36) PRIMARY KEY, contents MEDIUMTEXT)");
         } catch (SQLException e) {
             plugin.getLogger().severe("MySQL init failed: " + e.getMessage());
         }
     }
 
+    private Connection open() throws SQLException {
+        return DriverManager.getConnection(jdbcUrl, user, pass);
+    }
+
     @Override
     public List<ItemStack> load(UUID uuid) {
-        try (PreparedStatement ps = conn.prepareStatement("SELECT contents FROM backpacks WHERE uuid = ?")) {
+        try (Connection c = open();
+             PreparedStatement ps = c.prepareStatement("SELECT contents FROM backpacks WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return ItemUtils.itemsFromBase64(rs.getString(1));
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return ItemUtils.itemsFromBase64(rs.getString(1));
+                }
             }
         } catch (SQLException e) {
             plugin.getLogger().warning("MySQL load failed: " + e.getMessage());
@@ -52,7 +68,10 @@ public class MySQLStorage implements Storage {
     @Override
     public void save(UUID uuid, List<ItemStack> items) {
         String data = ItemUtils.itemsToBase64(items);
-        try (PreparedStatement ps = conn.prepareStatement("INSERT INTO backpacks(uuid, contents) VALUES(?, ?) ON DUPLICATE KEY UPDATE contents = VALUES(contents)")) {
+        try (Connection c = open();
+             PreparedStatement ps = c.prepareStatement(
+                     "INSERT INTO backpacks(uuid, contents) VALUES(?, ?) " +
+                             "ON DUPLICATE KEY UPDATE contents = VALUES(contents)")) {
             ps.setString(1, uuid.toString());
             ps.setString(2, data);
             ps.executeUpdate();
@@ -69,9 +88,13 @@ public class MySQLStorage implements Storage {
     @Override
     public Set<UUID> listAll() {
         Set<UUID> set = new HashSet<>();
-        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery("SELECT uuid FROM backpacks")) {
+        try (Connection c = open();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT uuid FROM backpacks")) {
             while (rs.next()) {
-                try { set.add(UUID.fromString(rs.getString(1))); } catch (Exception ignored) {}
+                try {
+                    set.add(UUID.fromString(rs.getString(1)));
+                } catch (Exception ignored) {}
             }
         } catch (SQLException e) {
             plugin.getLogger().warning("MySQL listAll failed: " + e.getMessage());
@@ -81,6 +104,6 @@ public class MySQLStorage implements Storage {
 
     @Override
     public void close() {
-        try { if (conn != null && !conn.isClosed()) conn.close(); } catch (SQLException ignored) {}
+        // No persistent connection to close (fresh connection per operation).
     }
 }

@@ -282,6 +282,23 @@ public class BackpackService implements BackpackAPI {
     }
 
     /**
+     * Close and persist all currently open backpack views.
+     * Useful for clean shutdowns so no cursor or unsaved GUI state is lost.
+     */
+    public void closeAllOpenViewsAndSave() {
+        List<UUID> viewers = new ArrayList<>(openViews.keySet());
+        for (UUID viewerUuid : viewers) {
+            UUID target = openViews.get(viewerUuid);
+            if (target == null) continue;
+            Backpack bp = getOrCreateBackpack(target);
+            Inventory inv = bp.getView();
+            if (inv != null) {
+                handleInventoryClose(viewerUuid, inv);
+            }
+        }
+    }
+
+    /**
      * Add items to the backpack, merging with similar stacks and placing into empty slots.
      * Blocks storing of materials in the configured blacklist.
      * Applies auto-sort according to player preference: OFF/LIGHT/AGGRESSIVE.

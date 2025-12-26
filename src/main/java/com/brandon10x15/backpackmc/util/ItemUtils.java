@@ -4,9 +4,7 @@ package com.brandon10x15.backpackmc.util;
 import com.brandon10x15.backpackmc.config.ConfigManager;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.BundleMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -97,84 +95,48 @@ public class ItemUtils {
         return stack;
     }
 
-    // Show actual items only; fullness bar reaches 100% ONLY when there are 0 slots left.
-    public static ItemStack createShortcutItemWithPreview(ConfigManager cfg, NamespacedKey key, List<ItemStack> preview, int capacitySlots) {
+    // Create shortcut with preview in lore only (no internal filler items)
+    public static ItemStack createShortcutItemWithPreview(ConfigManager cfg, NamespacedKey shortcutKey, List<ItemStack> preview, int capacitySlots) {
         ItemStack stack = new ItemStack(cfg.shortcutMaterial());
         ItemMeta meta = stack.getItemMeta();
         meta.setDisplayName(org.bukkit.ChatColor.translateAlternateColorCodes('&', cfg.shortcutName()));
+
+        // Base lore (from config)
+        List<String> lore = new ArrayList<>();
         if (!cfg.shortcutLore().isEmpty()) {
-            List<String> colored = new ArrayList<>();
-            for (String l : cfg.shortcutLore()) colored.add(org.bukkit.ChatColor.translateAlternateColorCodes('&', l));
-            meta.setLore(colored);
+            for (String l : cfg.shortcutLore()) lore.add(org.bukkit.ChatColor.translateAlternateColorCodes('&', l));
         }
 
-        if (stack.getType() == Material.BUNDLE && meta instanceof BundleMeta bm) {
-            int capacity = Math.max(0, capacitySlots);
+        // Compute dynamic summary
+        int capacity = Math.max(0, capacitySlots);
+        int usedSlots = 0;
 
-            // Collect actual non-empty items within allowed capacity
-            List<ItemStack> nonEmpty = new ArrayList<>();
-            int usedSlots = 0;
-            if (preview != null && capacity > 0) {
-                int limit = Math.min(capacity, preview.size());
-                for (int i = 0; i < limit; i++) {
-                    ItemStack it = preview.get(i);
-                    if (it != null && it.getType() != Material.AIR) {
-                        nonEmpty.add(it);
-                        usedSlots++;
-                    }
+        if (preview != null && capacity > 0) {
+            int limit = Math.min(capacity, preview.size());
+            for (int i = 0; i < limit; i++) {
+                ItemStack it = preview.get(i);
+                if (it != null && it.getType() != Material.AIR) {
+                    usedSlots++;
                 }
             }
-
-            // Compute fullness units (0..64), but never allow 64 unless usedSlots == capacity
-            int rawUnits = capacity <= 0 ? 0 : (int) Math.round(64.0 * usedSlots / capacity);
-            int fullnessUnits = (usedSlots >= capacity) ? 64 : Math.min(63, Math.max(0, rawUnits));
-
-            // Build visible preview using actual items only (no filler). Distribute units across up to 8 items.
-            List<ItemStack> shown = new ArrayList<>();
-            if (fullnessUnits > 0 && !nonEmpty.isEmpty()) {
-                int maxVisible = Math.min(8, nonEmpty.size());
-                // If we have fewer units than visible slots, only show that many items with amount 1
-                int visibleCount = Math.min(maxVisible, fullnessUnits);
-                int remaining = fullnessUnits;
-
-                for (int i = 0; i < visibleCount; i++) {
-                    ItemStack sample = nonEmpty.get(i).clone();
-                    int max = Math.max(1, sample.getMaxStackSize());
-
-                    // Ensure each remaining slot can receive at least 1
-                    int slotsLeft = visibleCount - i - 1;
-                    int minNeededForRemaining = slotsLeft; // 1 per remaining slot
-                    int give = Math.min(max, Math.max(1, remaining - minNeededForRemaining));
-
-                    sample.setAmount(give);
-                    shown.add(sample);
-                    remaining -= give;
-                }
-
-                // If any units remain (unlikely with typical max 64), try to top up existing items without exceeding max
-                if (remaining > 0) {
-                    for (int i = 0; i < shown.size() && remaining > 0; i++) {
-                        ItemStack s = shown.get(i);
-                        int max = Math.max(1, s.getMaxStackSize());
-                        int canAdd = Math.max(0, max - s.getAmount());
-                        if (canAdd > 0) {
-                            int add = Math.min(canAdd, remaining);
-                            s.setAmount(s.getAmount() + add);
-                            remaining -= add;
-                        }
-                    }
-                }
-            }
-
-            bm.setItems(shown);
-            meta = bm;
-        } else if (stack.getType() == Material.BUNDLE) {
-            // Fallback when not able to set items
-            meta.addItemFlags(ItemFlag.HIDE_ITEM_SPECIFICS, ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
         }
+
+        // Progress bar based on usedSlots/capacity (kept in lore for readability)
+        int segments = 20;
+        int filled = (capacity > 0) ? (int) Math.round((usedSlots * 1.0 / capacity) * segments) : 0;
+        int empty = Math.max(0, segments - filled);
+        StringBuilder bar = new StringBuilder();
+        for (int i = 0; i < filled; i++) bar.append(org.bukkit.ChatColor.GREEN).append("|");
+        for (int i = 0; i < empty; i++) bar.append(org.bukkit.ChatColor.DARK_GRAY).append("|");
+
+        lore.add(org.bukkit.ChatColor.DARK_GRAY + "" + org.bukkit.ChatColor.STRIKETHROUGH + "--------------------");
+        lore.add(org.bukkit.ChatColor.GRAY + "Slots used: " + org.bukkit.ChatColor.YELLOW + usedSlots
+                + org.bukkit.ChatColor.GRAY + "/" + org.bukkit.ChatColor.YELLOW + capacity);
+        lore.add(org.bukkit.ChatColor.GRAY + "Usage: " + bar.toString());
+        meta.setLore(lore);
 
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        pdc.set(key, PersistentDataType.BYTE, (byte) 1);
+        pdc.set(shortcutKey, PersistentDataType.BYTE, (byte) 1);
         stack.setItemMeta(meta);
         return stack;
     }
