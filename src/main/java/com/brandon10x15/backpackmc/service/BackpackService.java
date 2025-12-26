@@ -409,10 +409,25 @@ public class BackpackService implements BackpackAPI {
 
     public UpdateResult checkForUpdate() {
         if (!config.isUpdaterEnabled()) return null;
-        String current = plugin.getDescription().getVersion();
-        String latest = UpdateChecker.fetchLatest(config.updaterCheckUrl());
-        boolean update = latest != null && !latest.trim().equalsIgnoreCase(current);
+        String currentRaw = plugin.getDescription().getVersion();
+        String repo = config.githubRepo();
+        boolean include = config.includePrereleases();
+
+        UpdateChecker.GitHubReleaseInfo info = UpdateChecker.fetchGitHubLatest(repo, include);
+        String latestRaw = (info != null) ? info.tag : null;
+
+        String current = normalizeVersion(currentRaw);
+        String latest = normalizeVersion(latestRaw);
+
+        boolean update = latest != null && !latest.isBlank() && !latest.equalsIgnoreCase(current);
         return new UpdateResult(update, current, latest);
+    }
+
+    private static String normalizeVersion(String v) {
+        if (v == null) return null;
+        String s = v.trim();
+        if (s.startsWith("v") || s.startsWith("V")) s = s.substring(1);
+        return s;
     }
 
     public int migrateTo(StorageType toType) {

@@ -23,6 +23,12 @@ public final class ConfigKeys {
     public static final String SETTINGS_KEEP_ON_DEATH_DEFAULT = "settings.keep-on-death-default";
     public static final String SETTINGS_DROP_ON_DEATH_IF_NOT_KEEPING = "settings.drop-on-death-if-not-keeping";
     public static final String UPDATER_ENABLED = "settings.updater.enabled";
+
+    // New GitHub-based updater keys
+    public static final String UPDATER_GITHUB_REPO = "settings.updater.github-repo";
+    public static final String UPDATER_INCLUDE_PRERELEASES = "settings.updater.include-prereleases";
+
+    // Legacy (optional fallback) updater keys
     public static final String UPDATER_CHECK_URL = "settings.updater.check-url";
     public static final String UPDATER_DOWNLOAD_URL = "settings.updater.download-url";
 

@@ -36,8 +36,14 @@ settings:
   auto-sort:
     default-mode: LIGHT
   updater:
-    enabled: false
+    enabled: true
+    # If github-repo is set (e.g., "Brandon10x15/BackpackMC"), the updater will query GitHub releases to find the latest tag.
+    # If include-prereleases is true, it will consider prereleases; otherwise it uses the latest stable release.
+    github-repo: Brandon10x15/BackpackMC
+    include-prereleases: false
+    # Optional fallback text endpoint (e.g., version.txt) if GitHub API is unavailable.
     check-url: https://raw.githubusercontent.com/example/BackpackMC/main/version.txt
+    # Optional fallback download URL shown in logs if no asset URL is discovered automatically.
     download-url: https://github.com/example/BackpackMC/releases/latest/download/BackpackMC.jar
 
 shortcut-item:

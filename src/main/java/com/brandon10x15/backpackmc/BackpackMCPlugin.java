@@ -118,7 +118,7 @@ public class BackpackMCPlugin extends JavaPlugin {
 
         this.updateChecker = new UpdateChecker(this, configManager);
         if (configManager.isUpdaterEnabled()) {
-            updateChecker.checkAsync();
+            updateChecker.checkGitHubAsync();
         }
 
         getLogger().info("BackpackMC enabled.");
