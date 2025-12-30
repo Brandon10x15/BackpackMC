@@ -13,6 +13,7 @@ import com.brandon10x15.backpackmc.util.ItemUtils;
 import com.brandon10x15.backpackmc.util.UpdateChecker;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -42,6 +43,9 @@ public class BackpackService implements BackpackAPI {
     // Per-player auto-sort preference
     private final Map<UUID, SortMode> autoSortPrefs = new ConcurrentHashMap<>();
 
+    // Shortcut item tag key to prevent backpack items inside backpacks
+    private final NamespacedKey shortcutKey;
+
     public record UpdateResult(boolean updateAvailable, String current, String latest) {}
     public record DownloadResult(boolean success, String latestTag, String errorMessage) {}
 
@@ -50,6 +54,7 @@ public class BackpackService implements BackpackAPI {
         this.storage = storage;
         this.config = config;
         this.lang = lang;
+        this.shortcutKey = new NamespacedKey(plugin, "backpack_shortcut");
     }
 
     @Override
@@ -75,6 +80,7 @@ public class BackpackService implements BackpackAPI {
     public Backpack getOrCreateBackpack(UUID uuid) {
         return cache.computeIfAbsent(uuid, id -> {
             List<ItemStack> items = storage.load(id);
+            items = stripShortcutItems(items); // Remove any backpack shortcut items that might have been stored
             int initialRows = Math.max(1, Math.min(6, (int) Math.ceil((items == null ? 0 : items.size()) / 9.0)));
             return new Backpack(id, initialRows, items);
         });
@@ -245,6 +251,27 @@ public class BackpackService implements BackpackAPI {
     }
 
     /**
+     * Expose the current open backpack Inventory for this viewer, or null if none.
+     */
+    public Inventory getOpenBackpackView(UUID viewerUuid) {
+        UUID target = openViews.get(viewerUuid);
+        if (target == null) return null;
+        Backpack bp = getOrCreateBackpack(target);
+        return bp.getView();
+    }
+
+    /**
+     * Force-save the currently open backpack for this viewer (if any).
+     * Useful when switching between containers to ensure no changes are lost.
+     */
+    public void forceSaveOpenBackpack(UUID viewerUuid) {
+        Inventory inv = getOpenBackpackView(viewerUuid);
+        if (inv != null) {
+            handleInventoryClose(viewerUuid, inv);
+        }
+    }
+
+    /**
      * Snapshot and save the current open backpack view (if any) for this viewer, without closing it.
      * Ensures changes are persisted even if the player re-opens the backpack before closing.
      */
@@ -272,10 +299,12 @@ public class BackpackService implements BackpackAPI {
 
     /**
      * Save the correct backpack (target) for this viewer and clear the view reference.
+     * Only persist and clear when the closed inventory is actually the backpack view;
+     * do not unset the openViews mapping when closing other containers (e.g., chest -> backpack switch).
      */
     public void handleInventoryClose(UUID viewerUuid, Inventory inv) {
-        UUID target = openViews.remove(viewerUuid);
-        if (target == null) return; // Not a backpack GUI
+        UUID target = openViews.get(viewerUuid);
+        if (target == null) return; // Not a backpack GUI tracked for this viewer
         Backpack bp = getOrCreateBackpack(target);
         if (bp.getView() == inv) {
             int capacity = bp.getRows() * 9;
@@ -285,9 +314,13 @@ public class BackpackService implements BackpackAPI {
             }
             List<ItemStack> sanitized = sanitizeContents(list, capacity);
             bp.setContents(sanitized);
-            storage.saveAsync(target, sanitized);
+            // Synchronous save to avoid race causing "loss or gain of items"
+            storage.save(target, sanitized);
             bp.setView(null);
+            // Now clear tracking since the actual backpack was closed
+            openViews.remove(viewerUuid);
         }
+        // If closing a different container, leave openViews intact.
     }
 
     /**
@@ -315,6 +348,11 @@ public class BackpackService implements BackpackAPI {
      * @return amount left over that could not be stored
      */
     public int addToBackpack(UUID uuid, ItemStack stack) {
+        // Prevent storing the backpack shortcut item itself
+        if (ItemUtils.hasShortcutTag(stack, shortcutKey)) {
+            return stack.getAmount();
+        }
+
         // Respect blocked materials
         if (config.blockedMaterials().contains(stack.getType())) {
             return stack.getAmount();
@@ -514,6 +552,8 @@ public class BackpackService implements BackpackAPI {
         int count = 0;
         for (UUID id : storage.listAll()) {
             List<ItemStack> items = storage.load(id);
+            // Strip any backpack shortcut items during migration as well
+            items = stripShortcutItems(items);
             to.save(id, items);
             count++;
         }
@@ -558,6 +598,7 @@ public class BackpackService implements BackpackAPI {
     /**
      * Sanitize a contents list:
      * - size exactly equals capacity
+     * - remove any backpack shortcut items to prevent recursion (treat as null)
      * - all stacks have amount within [1, maxStackSize]
      * - split any over-sized stacks into valid stacks (extras truncated if capacity is exceeded)
      * - null/AIR entries remain null
@@ -566,6 +607,12 @@ public class BackpackService implements BackpackAPI {
         List<ItemStack> sanitized = new ArrayList<>();
 
         for (ItemStack it : items) {
+            // Delete any backpack shortcut item found inside the backpack
+            if (ItemUtils.hasShortcutTag(it, shortcutKey)) {
+                sanitized.add(null);
+                continue;
+            }
+
             if (it == null || it.getType() == Material.AIR) {
                 sanitized.add(null);
                 continue;
@@ -603,5 +650,19 @@ public class BackpackService implements BackpackAPI {
         }
 
         return sanitized;
+    }
+
+    // Remove any backpack shortcut items from a loaded list (converted to nulls)
+    private List<ItemStack> stripShortcutItems(List<ItemStack> items) {
+        if (items == null) return new ArrayList<>();
+        List<ItemStack> out = new ArrayList<>(items.size());
+        for (ItemStack it : items) {
+            if (ItemUtils.hasShortcutTag(it, shortcutKey)) {
+                out.add(null);
+            } else {
+                out.add(it);
+            }
+        }
+        return out;
     }
 }

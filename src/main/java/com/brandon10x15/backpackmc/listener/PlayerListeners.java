@@ -130,6 +130,18 @@ public class PlayerListeners implements Listener {
         }
     }
 
+    // NEW: Ensure backpack changes are persisted when switching between containers (e.g., chest <-> backpack)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onOpen(InventoryOpenEvent e) {
+        if (!(e.getPlayer() instanceof Player p)) return;
+        // If player had a backpack open and is now opening a different inventory, force-save it.
+        var currentBackpackView = service.getOpenBackpackView(p.getUniqueId());
+        if (currentBackpackView != null && currentBackpackView != e.getInventory()) {
+            service.forceSaveOpenBackpack(p.getUniqueId());
+            ensureUniqueShortcut(p);
+        }
+    }
+
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         Player p = e.getPlayer();
@@ -176,6 +188,12 @@ public class PlayerListeners implements Listener {
 
         boolean backpackOpen = service.isViewerViewingBackpack(p.getUniqueId(), view.getTopInventory());
         boolean targetIsTop = e.getClickedInventory() != null && e.getClickedInventory().equals(view.getTopInventory());
+
+        // Prevent shift-clicking the backpack item from player inventory into the open backpack
+        if (backpackOpen && e.isShiftClick() && currentIsShortcut) {
+            e.setCancelled(true);
+            return;
+        }
 
         if (backpackOpen) {
             if (targetIsTop) {

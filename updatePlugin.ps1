@@ -20,7 +20,8 @@ if (-not $jar) {
 }
 
 $destinations = @(
-  'D:\_Minecraft\_SurvivalLand\servers\Terralith\plugins'
+    'D:\_Minecraft\_SurvivalLand\servers\Terralith\plugins'
+    'D:\_Minecraft\_SurvivalLand\servers\Survival\plugins'
 )
 
 foreach ($d in $destinations) {
