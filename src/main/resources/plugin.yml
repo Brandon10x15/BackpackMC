@@ -1,8 +1,10 @@
 # src/main/resources/plugin.yml
 name: BackpackMC
 main: com.brandon10x15.backpackmc.BackpackMCPlugin
-version: 1.0.2
+version: 1.0.3
 api-version: 1.21
+softdepend:
+  - ProtocolLib
 libraries:
   - com.mysql:mysql-connector-j:9.1.0
   - org.xerial:sqlite-jdbc:3.46.0.1
@@ -69,7 +71,7 @@ commands:
     usage: /clearinventoryconfirmoff
   eclearinventoryconfirmoff:
     description: Disable clear inventory confirmation (Essentials alias)
-    usage: /eclearinventoryconfirmoff
+    usage: /eclearconfirmoff
   clearconfirmoff:
     description: Disable clear inventory confirmation
     usage: /clearconfirmoff
@@ -136,6 +138,20 @@ permissions:
     default: true
   backpackmc.backpack.fullpickup:
     description: Pickup to backpack when inventory is full
+    default: true
+
+  # NEW: inventory/chest sort permissions
+  backpackmc.backpack.sortinv:
+    description: Sort your inventory
+    default: true
+  backpackmc.backpack.sortchest:
+    description: Sort the currently open chest
+    default: true
+  backpackmc.backpack.autosortinv:
+    description: Change auto-sort mode for inventory
+    default: true
+  backpackmc.backpack.autosortchest:
+    description: Change auto-sort mode for chests
     default: true
 
   backpackmc.clearInventory:

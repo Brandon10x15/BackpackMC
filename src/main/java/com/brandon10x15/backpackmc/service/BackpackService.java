@@ -16,7 +16,10 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.event.inventory.InventoryType;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -40,8 +43,11 @@ public class BackpackService implements BackpackAPI {
     private final Map<UUID, Backpack> cache = new ConcurrentHashMap<>();
     // Map of viewer -> target whose backpack is open
     private final Map<UUID, UUID> openViews = new ConcurrentHashMap<>();
-    // Per-player auto-sort preference
+    // Per-player auto-sort preference (backpack)
     private final Map<UUID, SortMode> autoSortPrefs = new ConcurrentHashMap<>();
+    // Per-player auto-sort preferences for inventory and chest
+    private final Map<UUID, SortMode> autoSortInvPrefs = new ConcurrentHashMap<>();
+    private final Map<UUID, SortMode> autoSortChestPrefs = new ConcurrentHashMap<>();
 
     // Shortcut item tag key to prevent backpack items inside backpacks
     private final NamespacedKey shortcutKey;
@@ -162,7 +168,7 @@ public class BackpackService implements BackpackAPI {
         }
     }
 
-    // Auto-sort preference
+    // Auto-sort preference (backpack)
     public SortMode getAutoSortMode(UUID uuid) {
         return autoSortPrefs.computeIfAbsent(uuid, id -> {
             String def = config.autoSortDefaultMode();
@@ -174,6 +180,26 @@ public class BackpackService implements BackpackAPI {
     public void setAutoSortMode(UUID uuid, SortMode mode) {
         if (mode == null) mode = SortMode.LIGHT;
         autoSortPrefs.put(uuid, mode);
+    }
+
+    // Auto-sort preference for player inventory - default OFF
+    public SortMode getAutoSortModeForInventory(UUID uuid) {
+        return autoSortInvPrefs.computeIfAbsent(uuid, id -> SortMode.OFF);
+    }
+
+    public void setAutoSortModeForInventory(UUID uuid, SortMode mode) {
+        if (mode == null) mode = SortMode.OFF;
+        autoSortInvPrefs.put(uuid, mode);
+    }
+
+    // Auto-sort preference for chest inventories - default OFF
+    public SortMode getAutoSortModeForChest(UUID uuid) {
+        return autoSortChestPrefs.computeIfAbsent(uuid, id -> SortMode.OFF);
+    }
+
+    public void setAutoSortModeForChest(UUID uuid, SortMode mode) {
+        if (mode == null) mode = SortMode.OFF;
+        autoSortChestPrefs.put(uuid, mode);
     }
 
     @Override
@@ -217,6 +243,127 @@ public class BackpackService implements BackpackAPI {
             for (int i = 0; i < bp.getView().getSize(); i++) {
                 bp.getView().setItem(i, finalContents.get(i));
             }
+        }
+    }
+
+    // Sort player's inventory storage contents, excluding the hotbar (slots 0-8)
+    @Override
+    public void sortPlayerInventory(Player player) {
+        if (player == null) return;
+        PlayerInventory inv = player.getInventory();
+        ItemStack[] storage = inv.getStorageContents();
+        int total = storage.length; // typically 36 (9 hotbar + 27 main)
+        int hotbarSize = 9;
+        int mainStart = hotbarSize;
+        int mainCapacity = Math.max(0, total - hotbarSize);
+
+        // Collect items from main storage only (exclude hotbar)
+        List<ItemStack> items = new ArrayList<>();
+        for (int i = mainStart; i < total; i++) {
+            ItemStack it = storage[i];
+            if (it != null && it.getType() != Material.AIR) items.add(it.clone());
+        }
+
+        items = ItemUtils.compactStacks(items);
+
+        SortMode mode = getAutoSortModeForInventory(player.getUniqueId());
+        if (mode == SortMode.AGGRESSIVE) {
+            items.sort(aggressiveComparator());
+        } else if (mode == SortMode.LIGHT) {
+            items.sort((a, b) -> {
+                int byType = a.getType().name().compareTo(b.getType().name());
+                if (byType != 0) return byType;
+                String an = a.hasItemMeta() && a.getItemMeta().hasDisplayName() ? a.getItemMeta().getDisplayName() : "";
+                String bn = b.hasItemMeta() && b.getItemMeta().hasDisplayName() ? b.getItemMeta().getDisplayName() : "";
+                int byName = an.compareToIgnoreCase(bn);
+                if (byName != 0) return byName;
+                return Integer.compare(b.getAmount(), a.getAmount());
+            });
+        } else {
+            // OFF -> keep compacted order
+        }
+
+        List<ItemStack> arranged = new ArrayList<>();
+        for (int i = 0; i < Math.min(mainCapacity, items.size()); i++) {
+            arranged.add(items.get(i));
+        }
+        while (arranged.size() < mainCapacity) arranged.add(null);
+
+        List<ItemStack> finalMain = sanitizeContentsNoShortcutRemoval(arranged, mainCapacity);
+
+        // Build output: preserve hotbar, replace main storage
+        ItemStack[] out = Arrays.copyOf(storage, total);
+        for (int i = 0; i < mainCapacity; i++) {
+            out[mainStart + i] = finalMain.get(i);
+        }
+
+        inv.setStorageContents(out);
+    }
+
+    // Sort current open chest-like inventory
+    @Override
+    public void sortOpenChest(Player player) {
+        if (player == null) return;
+        InventoryView view = player.getOpenInventory();
+        if (view == null) return;
+        Inventory top = view.getTopInventory();
+        if (isViewerViewingBackpack(player.getUniqueId(), top)) return;
+        if (!isChestLike(top)) return;
+
+        sortInventoryContents(top, getAutoSortModeForChest(player.getUniqueId()));
+    }
+
+    // Sort a chest inventory for a player (used on close hooks)
+    public void sortChestInventory(UUID uuid, Inventory inv) {
+        if (inv == null || !isChestLike(inv)) return;
+        SortMode mode = getAutoSortModeForChest(uuid);
+        if (mode == SortMode.OFF) return;
+        sortInventoryContents(inv, mode);
+    }
+
+    // Helper to detect chest-like top inventories
+    public boolean isChestLike(Inventory inv) {
+        if (inv == null) return false;
+        InventoryType type = inv.getType();
+        return type == InventoryType.CHEST || type == InventoryType.BARREL || type == InventoryType.SHULKER_BOX;
+    }
+
+    // Generic inventory sorting using the same comparators, without removing shortcut items
+    private void sortInventoryContents(Inventory inv, SortMode mode) {
+        int capacity = inv.getSize();
+        List<ItemStack> items = new ArrayList<>();
+        for (int i = 0; i < capacity; i++) {
+            ItemStack it = inv.getItem(i);
+            if (it != null && it.getType() != Material.AIR) items.add(it.clone());
+        }
+
+        items = ItemUtils.compactStacks(items);
+
+        if (mode == SortMode.AGGRESSIVE) {
+            items.sort(aggressiveComparator());
+        } else if (mode == SortMode.LIGHT) {
+            items.sort((a, b) -> {
+                int byType = a.getType().name().compareTo(b.getType().name());
+                if (byType != 0) return byType;
+                String an = a.hasItemMeta() && a.getItemMeta().hasDisplayName() ? a.getItemMeta().getDisplayName() : "";
+                String bn = b.hasItemMeta() && b.getItemMeta().hasDisplayName() ? b.getItemMeta().getDisplayName() : "";
+                int byName = an.compareToIgnoreCase(bn);
+                if (byName != 0) return byName;
+                return Integer.compare(b.getAmount(), a.getAmount());
+            });
+        } else {
+            // OFF -> keep as is (but compacted)
+        }
+
+        List<ItemStack> arranged = new ArrayList<>();
+        for (int i = 0; i < Math.min(capacity, items.size()); i++) {
+            arranged.add(items.get(i));
+        }
+        while (arranged.size() < capacity) arranged.add(null);
+
+        List<ItemStack> finalContents = sanitizeContentsNoShortcutRemoval(arranged, capacity);
+        for (int i = 0; i < capacity; i++) {
+            inv.setItem(i, finalContents.get(i));
         }
     }
 
@@ -454,6 +601,68 @@ public class BackpackService implements BackpackAPI {
         return remaining;
     }
 
+    // Check if backpack contains a similar stack to given item
+    public boolean hasSimilarInBackpack(UUID uuid, ItemStack stack) {
+        if (stack == null || stack.getType() == Material.AIR) return false;
+        Backpack bp = getOrCreateBackpack(uuid);
+        for (ItemStack it : bp.getContents()) {
+            if (it != null && it.isSimilar(stack)) return true;
+        }
+        return false;
+    }
+
+    // Check if backpack has room for at least part of the given stack (similar or empty slot)
+    public boolean hasRoomInBackpack(UUID uuid, ItemStack stack) {
+        if (stack == null || stack.getType() == Material.AIR) return false;
+        if (ItemUtils.hasShortcutTag(stack, shortcutKey)) return false;
+        if (config.blockedMaterials().contains(stack.getType())) return false;
+
+        Backpack bp = getOrCreateBackpack(uuid);
+        int capacity = bp.getRows() * 9;
+        List<ItemStack> contents = bp.getContents();
+
+        for (int i = 0; i < Math.min(contents.size(), capacity); i++) {
+            ItemStack cur = contents.get(i);
+            if (cur == null || cur.getType() == Material.AIR) return true;
+            if (cur.isSimilar(stack) && cur.getAmount() < cur.getMaxStackSize()) return true;
+        }
+        return false;
+    }
+
+    // Remove up to 'amount' items similar to 'template' from backpack; returns how many removed
+    public int takeFromBackpack(UUID uuid, ItemStack template, int amount) {
+        if (template == null || template.getType() == Material.AIR || amount <= 0) return 0;
+
+        Backpack bp = getOrCreateBackpack(uuid);
+        List<ItemStack> contents = new ArrayList<>(bp.getContents());
+        int capacity = bp.getRows() * 9;
+
+        int remaining = amount;
+        for (int i = 0; i < Math.min(contents.size(), capacity) && remaining > 0; i++) {
+            ItemStack cur = contents.get(i);
+            if (cur != null && cur.isSimilar(template)) {
+                int take = Math.min(remaining, cur.getAmount());
+                cur.setAmount(cur.getAmount() - take);
+                remaining -= take;
+                if (cur.getAmount() <= 0) contents.set(i, null);
+            }
+        }
+
+        if (remaining < amount) {
+            List<ItemStack> finalContents = sanitizeContents(contents, capacity);
+            bp.setContents(finalContents);
+            storage.saveAsync(uuid, finalContents);
+
+            if (bp.getView() != null) {
+                for (int i = 0; i < bp.getView().getSize(); i++) {
+                    bp.getView().setItem(i, finalContents.get(i));
+                }
+            }
+        }
+
+        return amount - remaining;
+    }
+
     public UpdateResult checkForUpdate() {
         if (!config.isUpdaterEnabled()) return null;
         String currentRaw = plugin.getDescription().getVersion();
@@ -498,7 +707,11 @@ public class BackpackService implements BackpackAPI {
             }
             if (!updateDir.exists()) updateDir.mkdirs();
 
-            String outName = plugin.getDescription().getName() + ".jar";
+            // Include version in the output file name, e.g., BackpackMC-1.0.2.jar
+            String versionForName = (latestTag != null && !latestTag.isBlank())
+                    ? latestTag
+                    : normalizeVersion(plugin.getDescription().getVersion());
+            String outName = plugin.getDescription().getName() + "-" + versionForName + ".jar";
             File outFile = new File(updateDir, outName);
 
             HttpClient client = HttpClient.newBuilder()
@@ -643,6 +856,47 @@ public class BackpackService implements BackpackAPI {
         }
 
         // Ensure exact capacity
+        if (sanitized.size() > capacity) {
+            sanitized = new ArrayList<>(sanitized.subList(0, capacity));
+        } else {
+            while (sanitized.size() < capacity) sanitized.add(null);
+        }
+
+        return sanitized;
+    }
+
+    // Sanitize for non-backpack containers (do NOT remove shortcut items)
+    private List<ItemStack> sanitizeContentsNoShortcutRemoval(List<ItemStack> items, int capacity) {
+        List<ItemStack> sanitized = new ArrayList<>();
+
+        for (ItemStack it : items) {
+            if (it == null || it.getType() == Material.AIR) {
+                sanitized.add(null);
+                continue;
+            }
+            ItemStack base = it.clone();
+            int max = Math.max(1, base.getMaxStackSize());
+            int amt = base.getAmount();
+
+            if (amt <= 0) {
+                sanitized.add(null);
+                continue;
+            }
+
+            int put = Math.min(amt, max);
+            base.setAmount(put);
+            sanitized.add(base);
+            amt -= put;
+
+            while (amt > 0 && sanitized.size() < capacity) {
+                ItemStack extra = base.clone();
+                int give = Math.min(max, amt);
+                extra.setAmount(give);
+                sanitized.add(extra);
+                amt -= give;
+            }
+        }
+
         if (sanitized.size() > capacity) {
             sanitized = new ArrayList<>(sanitized.subList(0, capacity));
         } else {

@@ -29,6 +29,13 @@ update-download-failed: "&cUpdate-Download fehlgeschlagen: {reason}"
 update-none: "&aDu verwendest bereits die neueste Version."
 update-how-to-download: "&7Führe &e/backpack update download &7aus, um die neueste Version herunterzuladen."
 
+# NEU: Inventar/Kisten Sortier-Nachrichten
+sorted-inventory: "&aDein Inventar wurde sortiert."
+sorted-chest: "&aDie Kiste wurde sortiert."
+no-chest-open: "&cKeine Kiste ist geöffnet."
+autosortinv-set: "&aAuto-Sortiermodus für Inventar auf &e{mode}&a gesetzt."
+autosortchest-set: "&aAuto-Sortiermodus für Kisten auf &e{mode}&a gesetzt."
+
 usage:
   help-header: "&eBackpackMC Befehle:"
   help-lines:
@@ -36,7 +43,11 @@ usage:
     - "&e/backpack clean &7- Leere deinen Rucksack"
     - "&e/backpack clean <spieler> &7- Leere den Rucksack eines Spielers"
     - "&e/backpack sort &7- Sortiere deinen Rucksack (beachtet Auto-Sortiermodus)"
-    - "&e/backpack autosort <off|light|aggressive> &7- Auto-Sortiermodus umschalten"
+    - "&e/backpack autosort <off|light|aggressive> &7- Auto-Sortiermodus für Rucksack umschalten"
+    - "&e/backpack sortinv &7- Sortiere dein Inventar"
+    - "&e/backpack sortchest &7- Sortiere die aktuell geöffnete Kiste"
+    - "&e/backpack autosortinv <off|light|aggressive> &7- Auto-Sortiermodus für Inventar umschalten"
+    - "&e/backpack autosortchest <off|light|aggressive> &7- Auto-Sortiermodus für Kisten umschalten"
     - "&e/backpack <spieler> &7- Zeige den Rucksack eines Spielers"
     - "&e/backpack reload &7- Konfiguration neu laden"
     - "&e/backpack update &7- Nach Updates suchen"

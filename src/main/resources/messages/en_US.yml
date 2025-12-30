@@ -29,6 +29,13 @@ update-download-failed: "&cFailed to download update: {reason}"
 update-none: "&aYou're already running the latest version."
 update-how-to-download: "&7Run &e/backpack update download &7to download the latest release."
 
+# NEW: Inventory/chest sorting messages
+sorted-inventory: "&aYour inventory has been sorted."
+sorted-chest: "&aThe chest has been sorted."
+no-chest-open: "&cNo chest is open."
+autosortinv-set: "&aInventory auto-sort mode set to &e{mode}&a."
+autosortchest-set: "&aChest auto-sort mode set to &e{mode}&a."
+
 usage:
   help-header: "&eBackpackMC Commands:"
   help-lines:
@@ -36,7 +43,11 @@ usage:
     - "&e/backpack clean &7- Clean your backpack"
     - "&e/backpack clean <player> &7- Clean another's backpack"
     - "&e/backpack sort &7- Sort your backpack (respects auto-sort mode)"
-    - "&e/backpack autosort <off|light|aggressive> &7- Toggle auto-sort mode"
+    - "&e/backpack autosort <off|light|aggressive> &7- Toggle auto-sort mode for backpack"
+    - "&e/backpack sortinv &7- Sort your inventory"
+    - "&e/backpack sortchest &7- Sort the currently open chest"
+    - "&e/backpack autosortinv <off|light|aggressive> &7- Toggle auto-sort mode for inventory"
+    - "&e/backpack autosortchest <off|light|aggressive> &7- Toggle auto-sort mode for chests"
     - "&e/backpack <player> &7- View other's backpack"
     - "&e/backpack reload &7- Reload config"
     - "&e/backpack update &7- Check for updates"

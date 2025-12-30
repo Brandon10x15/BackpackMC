@@ -105,6 +105,37 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                 p.sendMessage(lang.color(lang.msg("sorted")));
                 return true;
             }
+            case "sortinv" -> {
+                if (!(sender instanceof Player p)) {
+                    sender.sendMessage(lang.prefix() + "Console cannot sort inventory.");
+                    return true;
+                }
+                if (!p.hasPermission("backpackmc.backpack.sortinv")) {
+                    p.sendMessage(lang.color(lang.msg("no-permission")));
+                    return true;
+                }
+                service.sortPlayerInventory(p);
+                p.sendMessage(lang.color(lang.msg("sorted-inventory")));
+                return true;
+            }
+            case "sortchest" -> {
+                if (!(sender instanceof Player p)) {
+                    sender.sendMessage(lang.prefix() + "Console cannot sort chest.");
+                    return true;
+                }
+                if (!p.hasPermission("backpackmc.backpack.sortchest")) {
+                    p.sendMessage(lang.color(lang.msg("no-permission")));
+                    return true;
+                }
+                var view = p.getOpenInventory();
+                if (view == null || !service.isChestLike(view.getTopInventory()) || service.isViewerViewingBackpack(p.getUniqueId(), view.getTopInventory())) {
+                    p.sendMessage(lang.color(lang.msg("no-chest-open")));
+                    return true;
+                }
+                service.sortOpenChest(p);
+                p.sendMessage(lang.color(lang.msg("sorted-chest")));
+                return true;
+            }
             case "autosort" -> {
                 if (!(sender instanceof Player p)) {
                     sender.sendMessage(lang.prefix() + "Console cannot toggle auto-sort.");
@@ -133,6 +164,66 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
                 }
                 service.setAutoSortMode(p.getUniqueId(), mode);
                 p.sendMessage(lang.color(lang.msg("autosort-set").replace("{mode}", mode.name())));
+                return true;
+            }
+            case "autosortinv" -> {
+                if (!(sender instanceof Player p)) {
+                    sender.sendMessage(lang.prefix() + "Console cannot toggle auto-sort for inventory.");
+                    return true;
+                }
+                if (!p.hasPermission("backpackmc.backpack.autosortinv")) {
+                    p.sendMessage(lang.color(lang.msg("no-permission")));
+                    return true;
+                }
+                BackpackService.SortMode mode;
+                if (args.length >= 2) {
+                    String v = args[1].toUpperCase(Locale.ROOT);
+                    try {
+                        mode = BackpackService.SortMode.valueOf(v);
+                    } catch (Exception e) {
+                        p.sendMessage(lang.color(lang.prefix() + "Usage: /backpack autosortinv <off|light|aggressive>"));
+                        return true;
+                    }
+                } else {
+                    BackpackService.SortMode cur = service.getAutoSortModeForInventory(p.getUniqueId());
+                    mode = switch (cur) {
+                        case OFF -> BackpackService.SortMode.LIGHT;
+                        case LIGHT -> BackpackService.SortMode.AGGRESSIVE;
+                        case AGGRESSIVE -> BackpackService.SortMode.OFF;
+                    };
+                }
+                service.setAutoSortModeForInventory(p.getUniqueId(), mode);
+                p.sendMessage(lang.color(lang.msg("autosortinv-set").replace("{mode}", mode.name())));
+                return true;
+            }
+            case "autosortchest" -> {
+                if (!(sender instanceof Player p)) {
+                    sender.sendMessage(lang.prefix() + "Console cannot toggle auto-sort for chests.");
+                    return true;
+                }
+                if (!p.hasPermission("backpackmc.backpack.autosortchest")) {
+                    p.sendMessage(lang.color(lang.msg("no-permission")));
+                    return true;
+                }
+                BackpackService.SortMode mode;
+                if (args.length >= 2) {
+                    String v = args[1].toUpperCase(Locale.ROOT);
+                    try {
+                        mode = BackpackService.SortMode.valueOf(v);
+                    } catch (Exception e) {
+                        p.sendMessage(lang.color(lang.prefix() + "Usage: /backpack autosortchest <off|light|aggressive>"));
+                        return true;
+                    }
+                } else {
+                    BackpackService.SortMode cur = service.getAutoSortModeForChest(p.getUniqueId());
+                    mode = switch (cur) {
+                        case OFF -> BackpackService.SortMode.LIGHT;
+                        case LIGHT -> BackpackService.SortMode.AGGRESSIVE;
+                        case AGGRESSIVE -> BackpackService.SortMode.OFF;
+                    };
+                }
+                service.setAutoSortModeForChest(p.getUniqueId(), mode);
+                p.sendMessage(lang.color(lang.msg("autosortchest-set").replace("{mode}", mode.name())));
                 return true;
             }
             case "reload" -> {
@@ -282,7 +373,7 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> base = Arrays.asList("help", "clean", "sort", "autosort", "reload", "update", "migrate");
+            List<String> base = Arrays.asList("help", "clean", "sort", "sortinv", "sortchest", "autosort", "autosortinv", "autosortchest", "reload", "update", "migrate");
             List<String> players = Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList());
             List<String> all = new ArrayList<>(base);
             all.addAll(players);
@@ -291,7 +382,7 @@ public class BackpackCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && args[0].equalsIgnoreCase("migrate")) {
             return Arrays.stream(StorageType.values()).map(Enum::name).toList();
         }
-        if (args.length == 2 && args[0].equalsIgnoreCase("autosort")) {
+        if (args.length == 2 && (args[0].equalsIgnoreCase("autosort") || args[0].equalsIgnoreCase("autosortinv") || args[0].equalsIgnoreCase("autosortchest"))) {
             return Arrays.asList("off", "light", "aggressive");
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("update")) {

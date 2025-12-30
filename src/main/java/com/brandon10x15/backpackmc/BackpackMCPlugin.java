@@ -34,6 +34,7 @@ public class BackpackMCPlugin extends JavaPlugin {
     private BackpackService service;
     private UpdateChecker updateChecker;
 
+
     public static BackpackMCPlugin get() {
         return instance;
     }

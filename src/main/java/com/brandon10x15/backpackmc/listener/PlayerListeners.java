@@ -19,12 +19,16 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayerListeners implements Listener {
 
@@ -33,6 +37,9 @@ public class PlayerListeners implements Listener {
     private final Lang lang;
     private final BackpackService service;
     private final NamespacedKey shortcutKey;
+
+    // Guard against re-entrant craft processing that could cause duplication
+    private final Set<UUID> craftRefillLock = ConcurrentHashMap.newKeySet();
 
     public PlayerListeners(BackpackMCPlugin plugin, ConfigManager config, Lang lang, BackpackService service) {
         this.plugin = plugin;
@@ -127,14 +134,28 @@ public class PlayerListeners implements Listener {
 
         if (e.getPlayer() instanceof Player p) {
             ensureUniqueShortcut(p);
+
+            // NEW: Auto-sort on close (inventory and chest), respecting per-player modes
+            UUID id = p.getUniqueId();
+
+            // Auto-sort player's inventory storage contents
+            if (service.getAutoSortModeForInventory(id) != BackpackService.SortMode.OFF) {
+                service.sortPlayerInventory(p);
+            }
+
+            // Auto-sort chest-like top inventory (excluding backpack view)
+            if (!service.isViewerClosingBackpack(id, e.getInventory())
+                    && service.isChestLike(e.getInventory())
+                    && service.getAutoSortModeForChest(id) != BackpackService.SortMode.OFF) {
+                service.sortChestInventory(id, e.getInventory());
+            }
         }
     }
 
-    // NEW: Ensure backpack changes are persisted when switching between containers (e.g., chest <-> backpack)
+    // Force-save when switching containers (e.g., chest <-> backpack)
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onOpen(InventoryOpenEvent e) {
         if (!(e.getPlayer() instanceof Player p)) return;
-        // If player had a backpack open and is now opening a different inventory, force-save it.
         var currentBackpackView = service.getOpenBackpackView(p.getUniqueId());
         if (currentBackpackView != null && currentBackpackView != e.getInventory()) {
             service.forceSaveOpenBackpack(p.getUniqueId());
@@ -260,6 +281,7 @@ public class PlayerListeners implements Listener {
             }
         }
 
+        // Store the clicked stack into backpack when dragging onto the shortcut in player inventory
         if (cursorIsShortcut
                 && e.getClickedInventory() != null
                 && e.getClickedInventory().equals(p.getInventory())
@@ -423,6 +445,95 @@ public class PlayerListeners implements Listener {
                 }
             });
         }
+    }
+
+    // SAFETY: Do not prefill crafting matrix from backpack here to avoid duplication.
+    // Vanilla will compute the craft; we refill consumed items AFTER the craft.
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onPrepareCraft(PrepareItemCraftEvent e) {
+        if (!(e.getView().getPlayer() instanceof Player p)) return;
+
+        // Respect usage restrictions
+        if (!p.hasPermission("backpackmc.backpack.use")) return;
+        if (!p.hasPermission("backpackmc.backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
+        if (!p.hasPermission("backpackmc.backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
+
+        // Intentionally no-op to prevent prefill that can lead to duplication in certain edge cases.
+    }
+
+    // SAFETY: Do not prefill for shift-click; we will restore exactly what was consumed after the craft.
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void prefillFromBackpackBeforeCraft(CraftItemEvent e) {
+        if (!(e.getWhoClicked() instanceof Player p)) return;
+
+        // Respect usage restrictions
+        if (!p.hasPermission("backpackmc.backpack.use")) return;
+        if (!p.hasPermission("backpackmc.backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
+        if (!p.hasPermission("backpackmc.backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
+
+        // Intentionally no-op (removed aggressive prefill to max stacks).
+    }
+
+    // Ensure crafting can continue smoothly by refilling from the backpack after each craft
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onCraft(CraftItemEvent e) {
+        if (!(e.getWhoClicked() instanceof Player p)) return;
+
+        // Respect usage restrictions
+        if (!p.hasPermission("backpackmc.backpack.use")) return;
+        if (!p.hasPermission("backpackmc.backpack.ignoreWorldBlacklist") && !service.canUseInWorld(p)) return;
+        if (!p.hasPermission("backpackmc.backpack.ignoreGameMode") && !service.canUseInGameMode(p)) return;
+
+        if (!(e.getInventory() instanceof CraftingInventory inv)) return;
+
+        UUID id = p.getUniqueId();
+        // Prevent re-entrant execution for the same player causing duplication
+        if (!craftRefillLock.add(id)) {
+            return;
+        }
+
+        // Snapshot matrix before craft
+        ItemStack[] before = inv.getMatrix().clone();
+
+        // After vanilla processes the craft, refill consumed slots from backpack
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            try {
+                ItemStack[] after = inv.getMatrix();
+                ItemStack[] newMatrix = after.clone();
+
+                for (int i = 0; i < before.length; i++) {
+                    ItemStack prev = before[i];
+                    if (prev == null || prev.getType() == Material.AIR) continue;
+
+                    int prevAmt = prev.getAmount();
+                    int curAmt = (after[i] != null && after[i].getType() != Material.AIR) ? after[i].getAmount() : 0;
+                    int consumed = Math.max(0, prevAmt - curAmt);
+                    if (consumed <= 0) continue;
+
+                    // Try to restore the consumed amount from backpack (exactly what was used)
+                    int restored = service.takeFromBackpack(p.getUniqueId(), prev, consumed);
+                    if (restored <= 0) continue;
+
+                    ItemStack curSlot = newMatrix[i];
+                    if (curSlot == null || curSlot.getType() == Material.AIR || !curSlot.isSimilar(prev)) {
+                        ItemStack put = prev.clone();
+                        put.setAmount(restored + curAmt); // restore back to the pre-craft level
+                        newMatrix[i] = put;
+                    } else {
+                        curSlot.setAmount(curSlot.getAmount() + restored);
+                        newMatrix[i] = curSlot;
+                    }
+                }
+
+                inv.setMatrix(newMatrix);
+                // Force client to see updated crafting matrix/result immediately
+                p.updateInventory();
+
+                ensureUniqueShortcut(p);
+            } finally {
+                craftRefillLock.remove(id);
+            }
+        });
     }
 
     private void ensureUniqueShortcut(Player p) {

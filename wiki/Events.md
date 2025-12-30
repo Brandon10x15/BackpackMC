@@ -1,9 +1,8 @@
-# Events.md
+<!-- Events.md -->
 
-[README](README.md) | [Installation](Installation.md) | [Configuration](Configuration.md) | [Commands](Commands.md) | [Permissions](Permissions.md) | [Shortcut-Item](Shortcut-Item.md) | [Storage](Storage.md) | [Migration](Migration.md) | [API](API.md) | [Events](Events.md) | [FAQ](FAQ.md) | [Troubleshooting](Troubleshooting.md)
+[README](README.md) | [Installation](wiki/Installation.md) | [Configuration](wiki/Configuration.md) | [Commands](wiki/Commands.md) | [Permissions](wiki/Permissions.md) | [Shortcut-Item](wiki/Shortcut-Item.md) | [Storage](wiki/Storage.md) | [Migration](wiki/Migration.md) | [API](wiki/API.md) | [Events](wiki/Events.md) | [FAQ](wiki/FAQ.md) | [Troubleshooting](wiki/Troubleshooting.md)
 
 ## BackpackOpenEvent
-
 - Fired when a backpack is opened.
 - Fields:
     - viewer: Player
@@ -14,7 +13,6 @@
     - HandlerList getHandlers()
 
 ## BackpackCleanEvent
-
 - Fired when a backpack is cleaned (contents set to null).
 - Fields:
     - target: UUID (owner of the backpack)
@@ -23,7 +21,6 @@
     - HandlerList getHandlers()
 
 ## Example listener
-
 ```java
 @org.bukkit.event.EventHandler
 public void onOpen(com.brandon10x15.backpackmc.api.event.BackpackOpenEvent e) {
@@ -41,12 +38,10 @@ public void onClean(com.brandon10x15.backpackmc.api.event.BackpackCleanEvent e) 
 ```
 
 ## Editing behavior via events
-
 - BackpackOpenEvent editable flag:
-    - Indicates whether the viewer intends to edit the target’s backpack.
-    - You can restrict editing in your listener by closing the inventory or adjusting permissions.
+  - Indicates whether the viewer intends to edit the target’s backpack.
+  - You can restrict editing in your listener by closing the inventory or adjusting permissions.
 
 ## Snapshot timing
-
 - The plugin snapshots backpack contents after interactions and on close to ensure persistence and preview accuracy.
 - If you add custom UI items to the backpack, ensure they adhere to valid stack sizes to avoid being sanitized away.

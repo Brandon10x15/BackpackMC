@@ -8,8 +8,10 @@ import org.bukkit.Material;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.player.PlayerAttemptPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 
 public class InventoryListener implements Listener {
@@ -24,15 +26,42 @@ public class InventoryListener implements Listener {
         this.service = service;
     }
 
-    @EventHandler(ignoreCancelled = true)
+    // Run late and even if some other plugin canceled; we may still route to backpack
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onPickup(EntityPickupItemEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
-        if (!config.autoPickupEnabled()) return;
-        if (!p.hasPermission("backpackmc.backpack.fullpickup")) return;
+        if (!shouldProcessAutoPickup(p)) return;
 
-        Item itemEntity = e.getItem();
+        if (handlePickupToBackpack(p, e.getItem())) {
+            e.setCancelled(true);
+        }
+    }
+
+    // Some servers fire this earlier than EntityPickupItemEvent; handle here too
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onAttemptPickup(PlayerAttemptPickupItemEvent e) {
+        Player p = e.getPlayer();
+        if (!shouldProcessAutoPickup(p)) return;
+
+        if (handlePickupToBackpack(p, e.getItem())) {
+            e.setCancelled(true);
+        }
+    }
+
+    private boolean shouldProcessAutoPickup(Player p) {
+        // Allow fullpickup permission to work even if global auto-pickup is disabled
+        if (!(config.autoPickupEnabled() || p.hasPermission("backpackmc.backpack.fullpickup"))) return false;
+        if (!p.hasPermission("backpackmc.backpack.fullpickup")) return false;
+        return true;
+    }
+
+    // returns true if we stored to backpack and consumed/corrected the ground item
+    private boolean handlePickupToBackpack(Player p, Item itemEntity) {
+        if (itemEntity == null || itemEntity.isDead()) return false;
+
         ItemStack stack = itemEntity.getItemStack();
-        if (config.blockedMaterials().contains(stack.getType())) return;
+        if (stack == null || stack.getType() == Material.AIR) return false;
+        if (config.blockedMaterials().contains(stack.getType())) return false;
 
         // Only try if inventory is full or item doesn't fully fit
         ItemStack remaining = stack.clone();
@@ -40,20 +69,32 @@ public class InventoryListener implements Listener {
         HashingResult r = trySimulateAdd(inv.getStorageContents(), remaining);
         boolean wouldFit = r.remaining == 0;
 
-        if (wouldFit) return; // default pickup is fine
+        // Prefer backpack pickup if player already has similar items in backpack
+        boolean hasSimilarInBackpack = service.hasSimilarInBackpack(p.getUniqueId(), stack);
+        boolean shouldPickupToBackpack = !wouldFit || hasSimilarInBackpack;
+
+        if (!shouldPickupToBackpack) return false;
+
+        // Also ensure backpack has room for it
+        if (!service.hasRoomInBackpack(p.getUniqueId(), stack)) return false;
 
         // Try to add to backpack
         int notStored = service.addToBackpack(p.getUniqueId(), stack);
         if (notStored <= 0) {
-            e.setCancelled(true);
-            itemEntity.remove();
+            // fully stored, remove ground item
+            if (!itemEntity.isDead()) itemEntity.remove();
             p.sendActionBar(lang.color(lang.msg("pickup-to-backpack")));
-        } else {
-            // Partly stored
+            return true;
+        } else if (notStored < stack.getAmount()) {
+            // partially stored, shrink ground item
             ItemStack newLeft = stack.clone();
             newLeft.setAmount(notStored);
             itemEntity.setItemStack(newLeft);
+            p.sendActionBar(lang.color(lang.msg("pickup-to-backpack")));
+            return true;
         }
+
+        return false;
     }
 
     private static class HashingResult {

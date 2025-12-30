@@ -1,6 +1,6 @@
-# Commands.md
+<!-- Commands.md -->
 
-[README](README.md) | [Installation](Installation.md) | [Configuration](Configuration.md) | [Commands](Commands.md) | [Permissions](Permissions.md) | [Shortcut-Item](Shortcut-Item.md) | [Storage](Storage.md) | [Migration](Migration.md) | [API](API.md) | [Events](Events.md) | [FAQ](FAQ.md) | [Troubleshooting](Troubleshooting.md)
+[README](README.md) | [Installation](wiki/Installation.md) | [Configuration](wiki/Configuration.md) | [Commands](wiki/Commands.md) | [Permissions](wiki/Permissions.md) | [Shortcut-Item](wiki/Shortcut-Item.md) | [Storage](wiki/Storage.md) | [Migration](wiki/Migration.md) | [API](wiki/API.md) | [Events](wiki/Events.md) | [FAQ](wiki/FAQ.md) | [Troubleshooting](wiki/Troubleshooting.md)
 
 ## /backpack
 - Open your backpack:
@@ -16,13 +16,25 @@
     - /backpack clean <player>
 - Sort your backpack:
     - /backpack sort
-- Set or cycle auto-sort:
+- Sort your inventory:
+    - /backpack sortinv
+- Sort the currently open chest-like inventory (chest, barrel, shulker; not the backpack GUI):
+    - /backpack sortchest
+- Set or cycle auto-sort (backpack):
     - /backpack autosort <off|light|aggressive>
     - /backpack autosort (no argument cycles current mode)
+- Set or cycle auto-sort (inventory):
+    - /backpack autosortinv <off|light|aggressive>
+    - /backpack autosortinv (no argument cycles)
+- Set or cycle auto-sort (chest):
+    - /backpack autosortchest <off|light|aggressive>
+    - /backpack autosortchest (no argument cycles)
 - Reload config and messages:
     - /backpack reload
 - Check for updates (if updater enabled):
     - /backpack update
+- Download latest update (applies on next restart):
+    - /backpack update download
 - Migrate storage backend:
     - /backpack migrate <YAML|SQLITE|MYSQL>
 

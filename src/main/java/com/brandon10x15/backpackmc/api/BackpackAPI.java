@@ -2,7 +2,6 @@
 package com.brandon10x15.backpackmc.api;
 
 import com.brandon10x15.backpackmc.model.Backpack;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
 import java.util.Optional;
@@ -16,4 +15,8 @@ public interface BackpackAPI {
     void cleanBackpack(UUID uuid);
     void sortBackpack(UUID uuid);
     void flush(UUID uuid);
+
+    // NEW: Sorting helpers for player inventory and current open chest
+    void sortPlayerInventory(Player player);
+    void sortOpenChest(Player player);
 }
