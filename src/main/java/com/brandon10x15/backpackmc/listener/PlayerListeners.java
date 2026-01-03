@@ -120,12 +120,20 @@ public class PlayerListeners implements Listener {
     @EventHandler
     public void onClose(InventoryCloseEvent e) {
         if (e.getPlayer() instanceof Player p) {
-            if (service.isViewerClosingBackpack(p.getUniqueId(), e.getInventory())) {
+            UUID id = p.getUniqueId();
+
+            if (service.isViewerClosingBackpack(id, e.getInventory())) {
                 ItemStack cursor = p.getItemOnCursor();
                 if (cursor != null && cursor.getType() != Material.AIR) {
                     Map<Integer, ItemStack> overflow = p.getInventory().addItem(cursor);
                     p.setItemOnCursor(null);
                     overflow.values().forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
+                }
+
+                // NEW: Auto-sort backpack on close, respecting owner's mode
+                UUID target = service.getOpenBackpackTarget(id);
+                if (target != null && service.getAutoSortMode(target) != BackpackService.SortMode.OFF) {
+                    service.sortBackpack(target);
                 }
             }
         }

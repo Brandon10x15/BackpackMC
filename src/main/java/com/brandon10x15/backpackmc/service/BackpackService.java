@@ -134,6 +134,9 @@ public class BackpackService implements BackpackAPI {
 
         Bukkit.getPluginManager().callEvent(new BackpackOpenEvent(viewer, target, editable));
         viewer.openInventory(inv);
+
+        // Force a client refresh next tick to avoid "invisible until click" desyncs
+        plugin.getServer().getScheduler().runTask(plugin, viewer::updateInventory);
     }
 
     public boolean canUseInWorld(Player p) {
@@ -165,6 +168,7 @@ public class BackpackService implements BackpackAPI {
             for (int i = 0; i < bp.getView().getSize(); i++) {
                 bp.getView().setItem(i, null);
             }
+            refreshOpenBackpackClients(uuid);
         }
     }
 
@@ -243,6 +247,7 @@ public class BackpackService implements BackpackAPI {
             for (int i = 0; i < bp.getView().getSize(); i++) {
                 bp.getView().setItem(i, finalContents.get(i));
             }
+            refreshOpenBackpackClients(uuid);
         }
     }
 
@@ -257,10 +262,29 @@ public class BackpackService implements BackpackAPI {
         int mainStart = hotbarSize;
         int mainCapacity = Math.max(0, total - hotbarSize);
 
+        // Detect if shortcut is present in hotbar (then we ignore moving it)
+        boolean shortcutInHotbar = false;
+        for (int i = 0; i < Math.min(hotbarSize, total); i++) {
+            ItemStack it = storage[i];
+            if (ItemUtils.hasShortcutTag(it, shortcutKey)) {
+                shortcutInHotbar = true;
+                break;
+            }
+        }
+
         // Collect items from main storage only (exclude hotbar)
+        // Also detect and pull out the first shortcut found in main to place at first main slot after sorting
         List<ItemStack> items = new ArrayList<>();
+        ItemStack shortcutFromMain = null;
         for (int i = mainStart; i < total; i++) {
             ItemStack it = storage[i];
+            if (ItemUtils.hasShortcutTag(it, shortcutKey)) {
+                if (shortcutFromMain == null) {
+                    shortcutFromMain = it.clone();
+                }
+                // Skip shortcut item(s) from sorting list
+                continue;
+            }
             if (it != null && it.getType() != Material.AIR) items.add(it.clone());
         }
 
@@ -290,6 +314,11 @@ public class BackpackService implements BackpackAPI {
         while (arranged.size() < mainCapacity) arranged.add(null);
 
         List<ItemStack> finalMain = sanitizeContentsNoShortcutRemoval(arranged, mainCapacity);
+
+        // Move the backpack shortcut to the first slot in main inventory if it's not already in the hotbar
+        if (shortcutFromMain != null && !shortcutInHotbar && !finalMain.isEmpty()) {
+            finalMain.set(0, shortcutFromMain);
+        }
 
         // Build output: preserve hotbar, replace main storage
         ItemStack[] out = Arrays.copyOf(storage, total);
@@ -408,6 +437,13 @@ public class BackpackService implements BackpackAPI {
     }
 
     /**
+     * NEW: Expose the target owner UUID for the current open backpack of this viewer, or null if none.
+     */
+    public UUID getOpenBackpackTarget(UUID viewerUuid) {
+        return openViews.get(viewerUuid);
+    }
+
+    /**
      * Force-save the currently open backpack for this viewer (if any).
      * Useful when switching between containers to ensure no changes are lost.
      */
@@ -441,6 +477,7 @@ public class BackpackService implements BackpackAPI {
             for (int i = 0; i < capacity; i++) {
                 v.setItem(i, sanitized.get(i));
             }
+            refreshOpenBackpackClients(target);
         }
     }
 
@@ -585,6 +622,7 @@ public class BackpackService implements BackpackAPI {
                 for (int i = 0; i < bp.getView().getSize(); i++) {
                     bp.getView().setItem(i, finalContents.get(i));
                 }
+                refreshOpenBackpackClients(uuid);
             }
         } else {
             // No changes; ensure current contents are saved if we added nothing
@@ -595,6 +633,7 @@ public class BackpackService implements BackpackAPI {
                 for (int i = 0; i < bp.getView().getSize(); i++) {
                     bp.getView().setItem(i, finalContents.get(i));
                 }
+                refreshOpenBackpackClients(uuid);
             }
         }
 
@@ -657,6 +696,7 @@ public class BackpackService implements BackpackAPI {
                 for (int i = 0; i < bp.getView().getSize(); i++) {
                     bp.getView().setItem(i, finalContents.get(i));
                 }
+                refreshOpenBackpackClients(uuid);
             }
         }
 
@@ -918,5 +958,25 @@ public class BackpackService implements BackpackAPI {
             }
         }
         return out;
+    }
+
+    // ---- UI refresh helpers to fix "invisible until click" desyncs ----
+
+    private void refreshOpenBackpackClients(UUID target) {
+        Backpack bp = getOrCreateBackpack(target);
+        Inventory view = bp.getView();
+        if (view == null) return;
+        refreshClientsViewing(view);
+    }
+
+    private void refreshClientsViewing(Inventory inv) {
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            for (Player pl : Bukkit.getOnlinePlayers()) {
+                InventoryView v = pl.getOpenInventory();
+                if (v != null && v.getTopInventory() == inv) {
+                    pl.updateInventory();
+                }
+            }
+        });
     }
 }
